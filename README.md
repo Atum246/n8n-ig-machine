@@ -27,25 +27,192 @@ This is a self-improving, ever-learning Instagram content machine built on n8n.
 ## 🛠️ Tech Stack (100% FREE)
 
 ```
-🖥️ VPS:           Oracle Cloud Free Tier (4 ARM cores, 24GB RAM)
-🧠 Workflow:       n8n (self-hosted)
-🗄️ Database:       NocoDB (self-hosted, Airtable alternative)
-🤖 AI Brain:       Groq API (free, fast) + Google Gemini API (free)
-🖼️ Image Host:     Telegraph (Telegram's free hosting)
-📱 Chat:           Telegram Bot API
-🌐 Browser:        Playwright (n8n community node)
-📊 Analytics:      NocoDB dashboards
-🔔 Alerts:         Telegram notifications
-📦 Storage:        Cloudflare R2 (10GB free)
+🤗 OPTION A — HuggingFace Spaces (Easiest):
+   🖥️ Hosting:    HuggingFace Spaces Free (2 vCPU, 16GB RAM)
+   🗄️ Database:    Supabase Free (500MB PostgreSQL)
+   🤖 AI Brain:    Groq API (free) + Google Gemini API (free)
+   🖼️ Image Host:  Telegraph (free) + ImgBB (free)
+   📱 Chat:        Telegram Bot API (free)
+   🌐 Browser:     Playwright + Chromium (included)
+
+🖥️ OPTION B — Oracle Cloud VPS (More Power):
+   🖥️ VPS:         Oracle Cloud Free Tier (4 ARM cores, 24GB RAM)
+   🗄️ Database:     NocoDB self-hosted (unlimited)
+   🤖 AI Brain:     Groq API (free) + Google Gemini API (free)
+   🖼️ Image Host:   Telegraph (free) + ImgBB (free)
+   📱 Chat:         Telegram Bot API (free)
+   🌐 Browser:      Playwright (n8n community node)
+   📊 Analytics:    NocoDB + Grafana self-hosted
 ```
 
 **Total Cost: $0.00** 💸
 
 ---
 
-## ⚡ Step-by-Step Setup
+## 🤗 Option A: Deploy on HuggingFace Spaces (EASIEST — Recommended!)
 
-### Step 1: Get a Free VPS
+> **No VPS needed. No Docker knowledge needed. Just click and go.** 🚀
+
+HuggingFace Spaces gives you **FREE hosting**: 2 vCPU, 16GB RAM, 50GB disk. Perfect for n8n!
+
+### Step 1: Create Free Accounts
+
+You need two free accounts:
+
+#### A. Supabase (Free Database)
+1. Go to [supabase.com/dashboard/sign-up](https://supabase.com/dashboard/sign-up)
+2. Create a free account
+3. Create a new project
+4. **Save your database password** — you'll need it!
+5. Click the **Connect** button (top left)
+6. Select **SQLAlchemy** → **Transaction pooler**
+7. Note down:
+   - **Host** (e.g., `aws-0-us-east-1.pooler.supabase.com`)
+   - **Port** (usually `6543`)
+   - **User** (e.g., `postgres.xxxxx`)
+   - **Database name** (usually `postgres`)
+
+#### B. HuggingFace (Free Hosting)
+1. Go to [huggingface.co/join](https://huggingface.co/join)
+2. Create a free account
+3. Remember your **profile name** (e.g., `dav`)
+
+### Step 2: Duplicate the n8n Space
+
+1. Go to [huggingface.co/spaces/tomowang/n8n](https://huggingface.co/spaces/tomowang/n8n)
+2. Click the **menu dropdown** (top right corner)
+3. Select **Duplicate this Space**
+4. Fill in the environment variables (see table below)
+5. Click **Duplicate Space**
+6. Wait ~5 minutes for deployment
+
+### Step 3: Set Environment Variables
+
+When duplicating, fill in these variables:
+
+| Variable | Where to Find It | Example |
+|----------|-------------------|---------|
+| `DB_POSTGRESDB_HOST` | Supabase → Connect → Transaction pooler host | `aws-0-us-east-1.pooler.supabase.com` |
+| `DB_POSTGRESDB_PORT` | Supabase → Connect → Transaction pooler port | `6543` |
+| `DB_POSTGRESDB_USER` | Supabase → Connect → Transaction pooler user | `postgres.abcxyz` |
+| `DB_POSTGRESDB_PASSWORD` | The password you set when creating Supabase project | `your-db-password` |
+| `N8N_ENCRYPTION_KEY` | Generate one (see below) | `aBcDeFgHiJkLmNoPqRsTuVwXyZ012345` |
+| `WEBHOOK_URL` | Your HuggingFace Space URL | `https://dav-ig-machine.hf.space/` |
+| `N8N_EDITOR_BASE_URL` | Same as WEBHOOK_URL | `https://dav-ig-machine.hf.space/` |
+| `GENERIC_TIMEZONE` | Your timezone | `Asia/Shanghai` |
+| `TZ` | Same as above | `Asia/Shanghai` |
+
+**Generate encryption key:** Open terminal and run:
+```bash
+openssl rand -base64 32
+```
+Or use any random string of letters and numbers (32+ characters).
+
+### Step 4: Get Your Space URL
+
+After deployment completes:
+1. Go to your Space (e.g., `https://huggingface.co/spaces/dav/ig-machine`)
+2. Your n8n URL will be: `https://dav-ig-machine.hf.space`
+3. Open this URL in your browser
+4. You'll see the n8n login page!
+
+### Step 5: Set Up n8n
+
+1. Open your n8n URL
+2. Create your admin account (first time only)
+3. Go to **Settings** → **Community Nodes**
+4. Install: `n8n-nodes-playwright`
+
+### Step 6: Import Workflows
+
+1. Go to [github.com/Atum246/n8n-ig-machine](https://github.com/Atum246/n8n-ig-machine)
+2. Download all 11 workflow JSON files
+3. In n8n, go to **Workflows** → **Import from File**
+4. Import each workflow (01 through 11)
+
+### Step 7: Set Up Credentials
+
+In n8n, go to **Credentials** and add:
+
+#### Telegram Bot
+1. Message [@BotFather](https://t.me/BotFather) on Telegram
+2. Send `/newbot`, name it, get the token
+3. In n8n → Credentials → Add → Telegram API
+4. Paste your bot token
+
+#### Groq API (AI Brain)
+1. Go to [console.groq.com](https://console.groq.com)
+2. Create free account → Get API key
+3. In n8n → Credentials → Add → HTTP Header Auth
+4. Header Name: `Authorization`
+5. Header Value: `Bearer YOUR_GROQ_API_KEY`
+
+#### Gemini API (Backup AI)
+1. Go to [aistudio.google.com](https://aistudio.google.com)
+2. Create free account → Get API key
+3. In n8n → Credentials → Add → HTTP Header Auth
+4. Header Name: `Authorization`
+5. Header Value: `Bearer YOUR_GEMINI_API_KEY`
+
+### Step 8: Update Brand Name
+
+In workflow `03-content-creation.json`, find the `HTML Generator` node:
+```javascript
+const brandWatermark = '@YOUR_BRAND';
+```
+Replace `@YOUR_BRAND` with your actual Instagram handle.
+
+### Step 9: Activate & Go!
+
+1. Toggle each workflow to **Active**
+2. Open Telegram → Message your bot
+3. Send: `/help` to see all commands
+4. Send: `/niche fitness` to start!
+
+### ⚠️ Important HuggingFace Notes
+
+#### Space Sleep
+HuggingFace Spaces go to sleep after **48 hours of inactivity**. To prevent this:
+- Use an uptime monitor (e.g., [UptimeRobot](https://uptimerobot.com/) — free)
+- Set it to ping your Space URL every 30 minutes
+- This keeps your Space alive 24/7
+
+#### Community Nodes
+If `n8n-nodes-playwright` doesn't install via the UI:
+1. Go to your Space → **Files** tab
+2. Edit the `Dockerfile`
+3. Add before `USER node`:
+```dockerfile
+RUN cd /usr/local/lib/node_modules/n8n && \
+    npm install n8n-nodes-playwright
+```
+4. Commit and the Space will rebuild
+
+#### Persistent Storage
+HuggingFace Spaces have **non-persistent storage**. This means:
+- n8n workflows and credentials are stored in Supabase (persistent ✅)
+- Uploaded files may be lost on restart
+- Use external storage (Cloudflare R2, Google Drive) for images
+
+#### Custom Dockerfile (Advanced)
+For full control, use the Dockerfile in `huggingface-space/Dockerfile`:
+1. Create a new HuggingFace Space (SDK: Docker)
+2. Upload the `Dockerfile` and `README.md` from the `huggingface-space/` folder
+3. Set environment variables in Space settings
+4. The Space will build and run automatically
+
+### 🎯 Quick Reference
+
+```
+🤗 HuggingFace Space URL: https://YOUR_USERNAME-ig-machine.hf.space
+🗄️ Supabase Dashboard: https://supabase.com/dashboard
+📱 Telegram Bot: @your_bot_name
+📊 n8n Dashboard: https://YOUR_USERNAME-ig-machine.hf.space
+```
+
+---
+
+## 🖥️ Option B: Deploy on Oracle Cloud VPS (More Power)
 
 1. Go to [Oracle Cloud](https://www.oracle.com/cloud/free/)
 2. Create a free account (no credit card charged)
