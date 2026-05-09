@@ -1,0 +1,503 @@
+{
+  "name": "🔬 IG Machine - Deep Research Engine",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "research-trigger",
+      "name": "📥 Research Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== RESEARCH ORCHESTRATOR =====\n// Plans all research tasks and generates search queries\n\nconst input = $input.first().json;\nconst niche = input.niche || input.data?.niche;\nconst chatId = input.chatId || input.data?.chatId;\nconst state = input.state || input.data?.state || {};\n\n// Generate comprehensive search queries for the niche\nconst queries = [\n  // Core niche queries\n  niche,\n  `${niche} tips`,\n  `${niche} advice`,\n  `${niche} for beginners`,\n  `${niche} mistakes to avoid`,\n  `how to ${niche}`,\n  `${niche} motivation`,\n  `${niche} inspiration`,\n  \n  // Social media specific\n  `${niche} instagram`,\n  `${niche} tiktok`,\n  `${niche} reels`,\n  `${niche} carousel`,\n  `${niche} content ideas`,\n  `${niche} viral content`,\n  `${niche} trending`,\n  \n  // Psychology & Pain points\n  `${niche} problems`,\n  `${niche} struggles`,\n  `${niche} challenges`,\n  `${niche} questions people ask`,\n  `${niche} FAQ`,\n  `${niche} myths`,\n  `${niche} truth about`,\n  `${niche} what no one tells you`,\n  \n  // Hooks & CTAs\n  `${niche} hooks`,\n  `${niche} captions`,\n  `${niche} call to action`,\n  `${niche} engagement`,\n  `${niche} hashtags`,\n  \n  // Competitors\n  `${niche} influencers`,\n  `${niche} top creators`,\n  `${niche} best accounts`,\n  `${niche} competitors`,\n  \n  // Trends\n  `${niche} trends 2025`,\n  `${niche} trends 2026`,\n  `whats popular in ${niche}`,\n  `${niche} going viral`,\n  \n  // Monetization\n  `${niche} products to sell`,\n  `${niche} digital products`,\n  `${niche} how to make money`,\n  `${niche} affiliate marketing`,\n  `${niche} courses`,\n  \n  // Google PAA style\n  `what is ${niche}`,\n  `why ${niche} is important`,\n  `best ${niche} strategies`,\n  `${niche} step by step`,\n  `${niche} guide`,\n  `${niche} tutorial`,\n  \n  // Sub-niches (auto-expand)\n  `${niche} sub niches`,\n  `${niche} micro niches`,\n  `${niche} related topics`,\n  `${niche} categories`\n];\n\n// Platform-specific research tasks\nconst platforms = [\n  { name: 'tiktok', searchUrl: `https://www.tiktok.com/search?q=${encodeURIComponent(niche)}` },\n  { name: 'instagram', searchUrl: `https://www.instagram.com/explore/tags/${encodeURIComponent(niche.replace(/\\s+/g, ''))}/` },\n  { name: 'reddit', searchUrl: `https://www.reddit.com/search/?q=${encodeURIComponent(niche)}&sort=top` },\n  { name: 'youtube', searchUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(niche + ' best content')}` },\n  { name: 'pinterest', searchUrl: `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(niche)}` },\n  { name: 'twitter', searchUrl: `https://twitter.com/search?q=${encodeURIComponent(niche)}&src=typed_query&f=top` },\n  { name: 'linkedin', searchUrl: `https://www.linkedin.com/search/results/content/?keywords=${encodeURIComponent(niche)}` },\n  { name: 'google_trends', searchUrl: `https://trends.google.com/trends/explore?q=${encodeURIComponent(niche)}` },\n  { name: 'google_paa', searchUrl: `https://www.google.com/search?q=${encodeURIComponent(niche + ' people also ask')}` },\n  { name: 'facebook_groups', searchUrl: `https://www.facebook.com/groups/search/groups/?query=${encodeURIComponent(niche)}` }\n];\n\nreturn [{\n  json: {\n    niche,\n    chatId,\n    queries,\n    platforms,\n    state,\n    researchStartTime: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "research-planner",
+      "name": "📋 Research Planner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.google.com/search?q={{ encodeURIComponent($json.queries[0]) }}&num=20",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        }
+      },
+      "id": "google-search-1",
+      "name": "🔍 Google Search - Core",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.google.com/search?q={{ encodeURIComponent($json.queries[1]) }}+site:reddit.com&num=20",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        }
+      },
+      "id": "google-search-reddit",
+      "name": "🔍 Google - Reddit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.reddit.com/search.json?q={{ encodeURIComponent($json.niche) }}&sort=top&limit=50&t=month",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "IGMachine/1.0"
+            }
+          ]
+        }
+      },
+      "id": "reddit-api",
+      "name": "🔴 Reddit API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 600]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://trends.google.com/trends/api/dailytrends?hl=en-US&tz=-480&geo=US&ns=15&req=%7B%22restriction%22:%7B%22geo%22:%22US%22%7D,%22keywordType%22:%22KEYWORD%22,%22time%22:%22today+3-m%22,%22language%22:%22en%22%7D",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "google-trends",
+      "name": "📈 Google Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== BROWSER RESEARCH - TikTok =====\n// Scrapes TikTok search results for niche content\n\nconst niche = $input.first().json.niche;\n\n// TikTok search URL\nconst searchUrl = `https://www.tiktok.com/search?q=${encodeURIComponent(niche)}`;\n\n// Return the URL for Playwright to process\nreturn [{\n  json: {\n    platform: 'tiktok',\n    url: searchUrl,\n    niche: niche,\n    tasks: [\n      'Scroll feed and collect top 50 video titles',\n      'Extract view counts from visible videos',\n      'Note content formats (talking head, text overlay, etc)',\n      'Collect hashtags used',\n      'Identify common hooks in first 3 seconds',\n      'Note music/audio trends',\n      'Collect comment themes from top videos'\n    ]\n  }\n}];"
+      },
+      "id": "tiktok-research",
+      "name": "🎵 TikTok Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== BROWSER RESEARCH - Instagram =====\n\nconst niche = $input.first().json.niche;\n\nconst hashtagUrl = `https://www.instagram.com/explore/tags/${encodeURIComponent(niche.replace(/\\s+/g, ''))}/`;\nconst searchUrl = `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(niche)}`;\n\nreturn [{\n  json: {\n    platform: 'instagram',\n    urls: [hashtagUrl, searchUrl],\n    niche: niche,\n    tasks: [\n      'Find top performing carousel posts in niche',\n      'Extract carousel design styles and layouts',\n      'Collect caption formats and lengths',\n      'Note hashtag sets used (first 30)',\n      'Identify CTA patterns (link in bio, comment below, etc)',\n      'Analyze color schemes and typography',\n      'Collect engagement metrics (likes, comments, saves)',\n      'Note posting frequency of top accounts',\n      'Identify content pillars (educate, entertain, inspire, sell)',\n      'Read comments for pain points and questions'\n    ]\n  }\n}];"
+      },
+      "id": "instagram-research",
+      "name": "📸 Instagram Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== BROWSER RESEARCH - Reddit =====\n\nconst niche = $input.first().json.niche;\n\nreturn [{\n  json: {\n    platform: 'reddit',\n    url: `https://www.reddit.com/search/?q=${encodeURIComponent(niche)}&sort=top&t=month`,\n    niche: niche,\n    tasks: [\n      'Find subreddits related to niche',\n      'Extract top posts and their engagement',\n      'Read comment threads for pain points',\n      'Identify common questions asked',\n      'Note language/terminology used',\n      'Find controversial topics (high comment count)',\n      'Collect trending discussions',\n      'Identify what content gets upvoted vs downvoted'\n    ]\n  }\n}];"
+      },
+      "id": "reddit-research",
+      "name": "🔴 Reddit Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== BROWSER RESEARCH - YouTube =====\n\nconst niche = $input.first().json.niche;\n\nreturn [{\n  json: {\n    platform: 'youtube',\n    url: `https://www.youtube.com/results?search_query=${encodeURIComponent(niche + ' best content')}`,\n    niche: niche,\n    tasks: [\n      'Find top performing videos in niche',\n      'Extract thumbnail styles and patterns',\n      'Analyze title hooks (curiosity gap, numbers, etc)',\n      'Note video lengths that perform best',\n      'Collect view counts and like ratios',\n      'Read top comments for audience insights',\n      'Identify content formats that work',\n      'Note posting frequency of top channels'\n    ]\n  }\n}];"
+      },
+      "id": "youtube-research",
+      "name": "▶️ YouTube Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== BROWSER RESEARCH - Pinterest =====\n\nconst niche = $input.first().json.niche;\n\nreturn [{\n  json: {\n    platform: 'pinterest',\n    url: `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(niche)}`,\n    niche: niche,\n    tasks: [\n      'Find top performing pins in niche',\n      'Extract pin design styles',\n      'Note color palettes that perform',\n      'Collect pin descriptions and keywords',\n      'Identify board themes',\n      'Note text overlay styles',\n      'Find trending pin formats'\n    ]\n  }\n}];"
+      },
+      "id": "pinterest-research",
+      "name": "📌 Pinterest Research",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 1000]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== KNOWLEDGE BASE AGGREGATOR =====\n// Combines all research data into unified knowledge base\n\nconst staticData = $getWorkflowStaticData('global');\nconst allData = $input.all();\n\n// Initialize knowledge base\nif (!staticData.knowledgeBase) {\n  staticData.knowledgeBase = {\n    // Hooks & Content\n    topHooks: [],\n    viralHooks: [],\n    hookPatterns: [],\n    contentIdeas: [],\n    contentFormats: [],\n    contentPillars: [],\n    \n    // Captions & CTAs\n    captionTemplates: [],\n    topCTAs: [],\n    ctaPatterns: [],\n    \n    // Hashtags\n    topHashtags: [],\n    hashtagSets: [],\n    trendingHashtags: [],\n    \n    // Psychology & Audience\n    painPoints: [],\n    desires: [],\n    questions: [],\n    objections: [],\n    emotionalTriggers: [],\n    audienceLanguage: [],\n    audiencePersonas: [],\n    \n    // Trends\n    trendingTopics: [],\n    trendingAudio: [],\n    trendingFormats: [],\n    trendHistory: [],\n    \n    // Competitors\n    competitors: [],\n    competitorStrategies: [],\n    competitorWeaknesses: [],\n    \n    // Design & Style\n    designStyles: [],\n    colorPalettes: [],\n    typographyStyles: [],\n    carouselLayouts: [],\n    \n    // Timing & Algorithm\n    bestTimes: [],\n    bestDays: [],\n    postingFrequency: null,\n    algorithmInsights: [],\n    \n    // Monetization\n    products: [],\n    monetizationStrategies: [],\n    affiliateOpportunities: [],\n    \n    // Performance\n    viralPatterns: [],\n    flopPatterns: [],\n    engagementDrivers: [],\n    \n    // Meta\n    lastUpdated: new Date().toISOString(),\n    totalDataPoints: 0,\n    sources: []\n  };\n}\n\nconst kb = staticData.knowledgeBase;\n\n// Process each research source\nfor (const item of allData) {\n  const data = item.json;\n  \n  if (data.platform === 'tiktok') {\n    // Extract TikTok insights\n    if (data.hooks) kb.topHooks.push(...data.hooks);\n    if (data.hashtags) kb.topHashtags.push(...data.hashtags);\n    if (data.trends) kb.trendingTopics.push(...data.trends);\n    if (data.contentFormats) kb.contentFormats.push(...data.contentFormats);\n    kb.sources.push('tiktok');\n  }\n  \n  if (data.platform === 'instagram') {\n    if (data.captions) kb.captionTemplates.push(...data.captions);\n    if (data.ctas) kb.topCTAs.push(...data.ctas);\n    if (data.hashtags) kb.hashtagSets.push(...data.hashtags);\n    if (data.designStyles) kb.designStyles.push(...data.designStyles);\n    if (data.colorPalettes) kb.colorPalettes.push(...data.colorPalettes);\n    if (data.competitors) kb.competitors.push(...data.competitors);\n    if (data.painPoints) kb.painPoints.push(...data.painPoints);\n    kb.sources.push('instagram');\n  }\n  \n  if (data.platform === 'reddit') {\n    if (data.questions) kb.questions.push(...data.questions);\n    if (data.painPoints) kb.painPoints.push(...data.painPoints);\n    if (data.language) kb.audienceLanguage.push(...data.language);\n    if (data.discussions) kb.contentIdeas.push(...data.discussions);\n    kb.sources.push('reddit');\n  }\n  \n  if (data.platform === 'youtube') {\n    if (data.hooks) kb.viralHooks.push(...data.hooks);\n    if (data.thumbnailStyles) kb.designStyles.push(...data.thumbnailStyles);\n    if (data.titlePatterns) kb.hookPatterns.push(...data.titlePatterns);\n    if (data.comments) kb.questions.push(...data.comments);\n    kb.sources.push('youtube');\n  }\n  \n  if (data.platform === 'pinterest') {\n    if (data.pinStyles) kb.designStyles.push(...data.pinStyles);\n    if (data.colorPalettes) kb.colorPalettes.push(...data.colorPalettes);\n    if (data.keywords) kb.topHashtags.push(...data.keywords);\n    kb.sources.push('pinterest');\n  }\n}\n\n// Deduplicate all arrays\nfor (const key of Object.keys(kb)) {\n  if (Array.isArray(kb[key])) {\n    kb[key] = [...new Set(kb[key])];\n  }\n}\n\n// Update meta\nkb.lastUpdated = new Date().toISOString();\nkb.totalDataPoints = Object.values(kb).reduce((sum, val) => {\n  return sum + (Array.isArray(val) ? val.length : 0);\n}, 0);\n\n// Generate AI analysis prompt\nconst analysisPrompt = `Based on the following knowledge base data for the niche \"${data.niche}\", generate:\n\n1. TOP 10 VIRAL HOOKS that work in this niche\n2. TOP 20 HASHTAG SETS (grouped by category)\n3. BEST POSTING TIMES for this niche\n4. TOP 5 CTAs that drive engagement\n5. AUDIENCE PAIN POINTS (top 10)\n6. CONTENT IDEAS (20 unique angles)\n7. COMPETITOR ANALYSIS (what they do well, gaps)\n8. DESIGN RECOMMENDATIONS (colors, fonts, layouts)\n9. MONETIZATION STRATEGIES (top 5)\n10. A/B TEST SUGGESTIONS\n\nKnowledge Base Data:\n${JSON.stringify(kb, null, 2)}\n\nReturn as structured JSON.`;\n\nreturn [{\n  json: {\n    knowledgeBase: kb,\n    analysisPrompt,\n    niche: data.niche,\n    chatId: data.chatId\n  }\n}];"
+      },
+      "id": "knowledge-aggregator",
+      "name": "🧠 Knowledge Aggregator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert Instagram growth strategist and niche research analyst. Analyze the provided data and generate actionable insights. Return valid JSON only.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify($json.analysisPrompt) }}\n    }\n  ],\n  \"temperature\": 0.7,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "ai-analysis",
+      "name": "🤖 AI Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 600],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GROQ_API_KEY",
+          "name": "Groq API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== MERGE AI INSIGHTS INTO KNOWLEDGE BASE =====\n\nconst kb = $input.first().json.knowledgeBase;\nconst aiResponse = $input.last().json;\n\ntry {\n  const insights = JSON.parse(aiResponse.choices[0].message.content);\n  \n  // Merge AI-generated insights\n  if (insights.topHooks) kb.topHooks = [...new Set([...insights.topHooks, ...kb.topHooks])];\n  if (insights.hashtagSets) kb.hashtagSets = [...new Set([...insights.hashtagSets, ...kb.hashtagSets])];\n  if (insights.bestTimes) kb.bestTimes = [...new Set([...insights.bestTimes, ...kb.bestTimes])];\n  if (insights.topCTAs) kb.topCTAs = [...new Set([...insights.topCTAs, ...kb.topCTAs])];\n  if (insights.painPoints) kb.painPoints = [...new Set([...insights.painPoints, ...kb.painPoints])];\n  if (insights.contentIdeas) kb.contentIdeas = [...new Set([...insights.contentIdeas, ...kb.contentIdeas])];\n  if (insights.competitorAnalysis) kb.competitorStrategies = insights.competitorAnalysis;\n  if (insights.designRecommendations) kb.designStyles = [...new Set([...insights.designRecommendations, ...kb.designStyles])];\n  if (insights.monetizationStrategies) kb.monetizationStrategies = insights.monetizationStrategies;\n  if (insights.abTestSuggestions) kb.abTests = insights.abTestSuggestions;\n  if (insights.audiencePersonas) kb.audiencePersonas = insights.audiencePersonas;\n  if (insights.viralPatterns) kb.viralPatterns = [...new Set([...insights.viralPatterns, ...kb.viralPatterns])];\n  if (insights.hookPatterns) kb.hookPatterns = [...new Set([...insights.hookPatterns, ...kb.hookPatterns])];\n} catch (e) {\n  // AI response parsing failed, keep raw data\n  kb.aiRawResponse = aiResponse.choices[0].message.content;\n}\n\nkb.lastUpdated = new Date().toISOString();\nkb.totalDataPoints = Object.values(kb).reduce((sum, val) => {\n  return sum + (Array.isArray(val) ? val.length : 0);\n}, 0);\n\n// Save to NocoDB\nconst niche = $input.first().json.niche;\nconst chatId = $input.first().json.chatId;\n\nreturn [{\n  json: {\n    knowledgeBase: kb,\n    niche,\n    chatId,\n    saveToNocoDB: true,\n    notifyUser: true\n  }\n}];"
+      },
+      "id": "merge-insights",
+      "name": "🔗 Merge Insights",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NOCODB_URL }}/api/v1/db/data/v1/ig_machine/knowledge_base",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"niche\": {{ JSON.stringify($json.niche) }},\n  \"data\": {{ JSON.stringify($json.knowledgeBase) }},\n  \"updated_at\": \"{{ new Date().toISOString() }}\",\n  \"total_data_points\": {{ $json.knowledgeBase.totalDataPoints }}\n}",
+        "options": {}
+      },
+      "id": "save-nocodb",
+      "name": "💾 Save to NocoDB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 600],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "NOCODB_API_KEY",
+          "name": "NocoDB API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=✅ *Research Complete!*\n\n🧠 Knowledge base updated with:\n📊 {{ $json.knowledgeBase.totalDataPoints }} data points\n📁 Sources: {{ $json.knowledgeBase.sources.join(', ') }}\n\n🔥 Top Hooks: {{ $json.knowledgeBase.topHooks.slice(0, 3).join(', ') }}\n🏷️ Hashtags: {{ $json.knowledgeBase.topHashtags.slice(0, 5).join(', ') }}\n⏰ Best Times: {{ $json.knowledgeBase.bestTimes.slice(0, 3).join(', ') }}\n\nType /knowledge to see everything I learned! 📚",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-research-complete",
+      "name": "📤 Notify Complete",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [2000, 600],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "scheduled-research",
+      "name": "⏰ Auto Research (6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get niche from static data for scheduled research\nconst staticData = $getWorkflowStaticData('global');\nconst niche = staticData.knowledgeBase?.niche || 'general';\nconst chatId = staticData.chatId || '';\n\nreturn [{\n  json: {\n    niche,\n    chatId,\n    state: staticData,\n    scheduled: true\n  }\n}];"
+      },
+      "id": "scheduled-research-data",
+      "name": "📋 Get Niche Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 800]
+    }
+  ],
+  "connections": {
+    "📥 Research Trigger": {
+      "main": [
+        [
+          {
+            "node": "📋 Research Planner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Research Planner": {
+      "main": [
+        [
+          {
+            "node": "🔍 Google Search - Core",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔍 Google - Reddit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Reddit API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📈 Google Trends",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🎵 TikTok Research",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📸 Instagram Research",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔴 Reddit Research",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "▶️ YouTube Research",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "📌 Pinterest Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Google Search - Core": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Google - Reddit": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔴 Reddit API": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📈 Google Trends": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎵 TikTok Research": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📸 Instagram Research": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔴 Reddit Research": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "▶️ YouTube Research": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📌 Pinterest Research": {
+      "main": [
+        [
+          {
+            "node": "🧠 Knowledge Aggregator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Knowledge Aggregator": {
+      "main": [
+        [
+          {
+            "node": "🤖 AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "🔗 Merge Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Merge Insights": {
+      "main": [
+        [
+          {
+            "node": "💾 Save to NocoDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save to NocoDB": {
+      "main": [
+        [
+          {
+            "node": "📤 Notify Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏰ Auto Research (6h)": {
+      "main": [
+        [
+          {
+            "node": "📋 Get Niche Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Get Niche Data": {
+      "main": [
+        [
+          {
+            "node": "📋 Research Planner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

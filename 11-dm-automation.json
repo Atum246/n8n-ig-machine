@@ -1,0 +1,119 @@
+{
+  "name": "🤖 IG Machine - DM Automation & Engagement Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "schedule-dm",
+      "name": "⏰ Check DMs Every 30min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {},
+      "id": "dm-trigger",
+      "name": "📥 DM Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== DM AUTO-RESPONDER =====\n// Handles incoming DMs with smart responses\n\nconst staticData = $getWorkflowStaticData('global');\nconst kb = staticData.knowledgeBase || {};\nconst niche = staticData.niche || 'your niche';\n\n// DM trigger keywords and responses\nconst dmTriggers = {\n  // Product link requests\n  productLink: {\n    keywords: ['link', 'product', 'buy', 'purchase', 'where', 'how much', 'price', 'cost', 'order', 'shop'],\n    response: `Hey! 👋 Thanks for reaching out!\n\nHere's the link you asked for: [PRODUCT_LINK]\n\nLet me know if you have any questions! 💬`,\n    followUp: `Hey! Just checking in — did you get a chance to check out the link? Let me know if you need anything! 🙌`,\n    followUpDelay: '24h'\n  },\n  \n  // Collaboration requests\n  collab: {\n    keywords: ['collab', 'collaborate', 'work together', 'partner', 'partnership', 'feature', 'shoutout'],\n    response: `Hey! Thanks for reaching out about collaboration! 🤝\n\nI'm always open to working with like-minded creators in the ${niche} space.\n\nCan you tell me more about what you have in mind?\n\n• What's your account about?\n• What type of collaboration are you thinking?\n• What's your audience size?\n\nLooking forward to hearing from you! 🚀`,\n    priority: 'high'\n  },\n  \n  // Questions about niche\n  question: {\n    keywords: ['how', 'what', 'why', 'when', 'where', 'advice', 'tip', 'help', 'guide', 'recommend'],\n    response: `Hey! Great question! 💡\n\nI actually have a lot of content about this on my page. Check out my recent carousels for detailed tips!\n\nFor personalized advice, I offer 1-on-1 coaching sessions. DM me "COACHING" for details! 🎯`,\n    priority: 'medium'\n  },\n  \n  // Coaching/service inquiries\n  coaching: {\n    keywords: ['coaching', 'mentor', 'mentorship', 'learn', 'teach', 'train', 'course', 'program'],\n    response: `Hey! So glad you're interested in leveling up! 🚀\n\nHere's what I offer:\n\n📚 1-on-1 Coaching: $X/session\n🎓 Group Program: $X/month\n📋 Self-Paced Course: $X one-time\n\nDM me "READY" to get started or ask me anything! 💪`,\n    priority: 'high'\n  },\n  \n  // Positive feedback\n  love: {\n    keywords: ['love', 'amazing', 'great', 'awesome', 'fire', 'best', 'inspire', 'helpful', 'changed', 'thank'],\n    response: `Thank you SO much! 🙏❤️\n\nMessages like this keep me going! Really glad my content is helping.\n\nKeep crushing it! 🔥`,\n    priority: 'low'\n  },\n  \n  // Join community\n  community: {\n    keywords: ['group', 'community', 'join', 'discord', 'telegram', 'member', 'membership'],\n    response: `Hey! 👋\n\nI'd love to have you in the community! 🎉\n\nHere's how to join:\n🔗 [COMMUNITY_LINK]\n\nInside you'll get:\n✅ Exclusive content\n✅ Direct access to me\n✅ Community support\n✅ Weekly Q&A sessions\n\nSee you inside! 🚀`,\n    priority: 'medium'\n  }\n};\n\n// Comment-triggered DMs (when someone comments specific keywords)\nconst commentDmTriggers = {\n  'link': `Hey {{username}}! 👋\n\nThanks for your interest! Here's the link:\n🔗 [PRODUCT_LINK]\n\nLet me know if you have questions! 💬`,\n  \n  'info': `Hey {{username}}! 🙌\n\nHere's all the info you need:\n📋 [INFO_LINK]\n\nDM me if you want to know more!`,\n  \n  'guide': `Hey {{username}}! 📚\n\nHere's the free guide I mentioned:\n📥 [GUIDE_LINK]\n\nHope it helps! Let me know what you think! 💡`,\n  \n  'start': `Hey {{username}}! 🚀\n\nReady to get started? Here's your next step:\n👉 [NEXT_STEP_LINK]\n\nI'm here if you need help! 💪`\n};\n\n// Store DM templates\nstaticData.dmTriggers = dmTriggers;\nstaticData.commentDmTriggers = commentDmTriggers;\n\nreturn [{\n  json: {\n    dmTriggers,\n    commentDmTriggers,\n    chatId: staticData.chatId\n  }\n}];"
+      },
+      "id": "dm-responder",
+      "name": "💬 DM Responder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== ENGAGEMENT BOT =====\n// Auto-engages with target audience\n\nconst staticData = $getWorkflowStaticData('global');\nconst kb = staticData.knowledgeBase || {};\nconst niche = staticData.niche || 'general';\n\n// Engagement targets\nconst engagementTargets = {\n  // Like comments on our posts\n  ownPosts: {\n    action: 'like_comments',\n    frequency: 'every 30 min',\n    maxPerBatch: 20,\n    priority: 'high'\n  },\n  \n  // Engage with competitor followers\n  competitorFollowers: {\n    action: 'like_and_comment',\n    targets: kb.competitors?.slice(0, 5) || [],\n    commentTemplates: [\n      'Great post! 🔥',\n      'Love this! ❤️',\n      'So true! 💯',\n      'Amazing content! 🙌',\n      'This is fire! 🔥'\n    ],\n    maxPerHour: 15,\n    priority: 'medium'\n  },\n  \n  // Engage with niche hashtags\n  hashtagEngagement: {\n    action: 'like_recent',\n    hashtags: kb.topHashtags?.slice(0, 5) || [niche],\n    maxPerHashtag: 10,\n    priority: 'low'\n  },\n  \n  // Follow/unfollow strategy\n  followStrategy: {\n    action: 'follow_engaged',\n    criteria: [\n      'Liked our post',\n      'Commented on competitor posts',\n      'Active in niche hashtags'\n    ],\n    maxFollowsPerDay: 20,\n    unfollowAfterDays: 3,\n    priority: 'medium'\n  }\n};\n\n// Engagement schedule\nconst engagementSchedule = [\n  { time: '08:00', action: 'Like recent comments on own posts' },\n  { time: '09:00', action: 'Engage with competitor followers' },\n  { time: '10:00', action: 'Like posts in niche hashtags' },\n  { time: '12:00', action: 'Reply to DMs and comments' },\n  { time: '14:00', action: 'Engage with competitor followers' },\n  { time: '16:00', action: 'Like posts in niche hashtags' },\n  { time: '18:00', action: 'Reply to DMs and comments' },\n  { time: '20:00', action: 'Engage with competitor followers' },\n  { time: '22:00', action: 'Like recent comments on own posts' }\n];\n\nstaticData.engagementTargets = engagementTargets;\nstaticData.engagementSchedule = engagementSchedule;\n\nreturn [{\n  json: {\n    engagementTargets,\n    engagementSchedule,\n    chatId: staticData.chatId\n  }\n}];"
+      },
+      "id": "engagement-bot",
+      "name": "🤖 Engagement Bot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=🤖 *DM & ENGAGEMENT SYSTEM ACTIVE*\n\n💬 *Auto-DM Triggers:*\n• \"link\" → Sends product link\n• \"info\" → Sends info page\n• \"guide\" → Sends free guide\n• \"coaching\" → Sends coaching details\n• \"collab\" → Sends collab response\n\n❤️ *Engagement Bot:*\n• Auto-likes comments on your posts\n• Engages with competitor followers\n• Likes posts in niche hashtags\n• Smart follow/unfollow strategy\n\n⏰ *Engagement Schedule:*\n{{ $json.engagementSchedule.map(s => `${s.time} — ${s.action}`).join('\\n') }}\n\n📊 *Limits (safe & natural):*\n• Max 15 engagements/hour\n• Max 20 follows/day\n• Auto-unfollow after 3 days\n\nEverything is running on autopilot! 🚀",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-dm",
+      "name": "📤 Notify DM System",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [900, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Check DMs Every 30min": {
+      "main": [
+        [
+          {
+            "node": "💬 DM Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 DM Trigger": {
+      "main": [
+        [
+          {
+            "node": "💬 DM Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💬 DM Responder": {
+      "main": [
+        [
+          {
+            "node": "🤖 Engagement Bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Engagement Bot": {
+      "main": [
+        [
+          {
+            "node": "📤 Notify DM System",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

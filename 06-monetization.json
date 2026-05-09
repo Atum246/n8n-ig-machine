@@ -1,0 +1,122 @@
+{
+  "name": "💰 IG Machine - Monetization Strategy",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "monetize-trigger",
+      "name": "📥 Monetize Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== MONETIZATION ANALYZER =====\n// Analyzes audience and recommends monetization strategy\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst kb = staticData.knowledgeBase || {};\nconst posts = staticData.posts || [];\nconst chatId = input.chatId || staticData.chatId;\nconst niche = staticData.niche || 'your niche';\n\n// Calculate audience readiness\nconst totalViews = posts.reduce((sum, p) => sum + (p.views || 0), 0);\nconst totalFollowers = staticData.followerCount || 0;\nconst avgEngagement = posts.length > 0 ? \n  posts.reduce((sum, p) => sum + ((p.likes || 0) + (p.comments || 0) + (p.saves || 0)), 0) / posts.length : 0;\n\n// Determine monetization readiness level\nlet readinessLevel = 'NOT_READY';\nlet readinessScore = 0;\n\nif (totalViews > 100000) { readinessScore += 30; }\nif (totalViews > 500000) { readinessScore += 20; }\nif (totalFollowers > 1000) { readinessScore += 15; }\nif (totalFollowers > 5000) { readinessScore += 15; }\nif (avgEngagement > 100) { readinessScore += 10; }\nif (avgEngagement > 500) { readinessScore += 10; }\n\nif (readinessScore >= 80) readinessLevel = 'READY_NOW';\nelse if (readinessScore >= 50) readinessLevel = 'ALMOST_READY';\nelse readinessLevel = 'BUILDING';\n\n// Monetization strategies based on niche\nconst monetizationStrategies = {\n  // Digital Products\n  digitalProducts: [\n    {\n      type: 'E-Book / Guide',\n      description: `Create a comprehensive guide about ${niche}`,\n      price: '$9-29',\n      effort: 'Medium',\n      potential: 'High',\n      example: `\"The Ultimate ${niche} Blueprint\"`\n    },\n    {\n      type: 'Online Course',\n      description: `Video course teaching ${niche} mastery`,\n      price: '$47-197',\n      effort: 'High',\n      potential: 'Very High',\n      example: `\"${niche} Mastery - 6 Week Program\"`\n    },\n    {\n      type: 'Templates / Presets',\n      description: `Ready-to-use templates for ${niche}`,\n      price: '$7-37',\n      effort: 'Low',\n      potential: 'Medium',\n      example: `\"${niche} Template Pack\"`\n    },\n    {\n      type: 'Cheat Sheet / Checklist',\n      description: `Quick reference guide for ${niche}`,\n      price: '$5-15',\n      effort: 'Low',\n      potential: 'Medium',\n      example: `\"${niche} Quick Start Checklist\"`\n    }\n  ],\n  \n  // Services\n  services: [\n    {\n      type: 'Coaching / Consulting',\n      description: `1-on-1 ${niche} coaching`,\n      price: '$50-500/session',\n      effort: 'High',\n      potential: 'Very High',\n      example: `\"${niche} Strategy Session\"`\n    },\n    {\n      type: 'Done-For-You Service',\n      description: `Handle ${niche} for clients`,\n      price: '$500-5000',\n      effort: 'Very High',\n      potential: 'Very High',\n      example: `\"We handle your ${niche} so you don't have to\"`\n    }\n  ],\n  \n  // Affiliate\n  affiliate: [\n    {\n      type: 'Tool Recommendations',\n      description: `Recommend tools you use for ${niche}`,\n      price: '10-50% commission',\n      effort: 'Low',\n      potential: 'Medium',\n      example: `\"The tools I use daily for ${niche}\"`\n    },\n    {\n      type: 'Course Affiliates',\n      description: `Promote other creators' courses`,\n      price: '20-50% commission',\n      effort: 'Low',\n      potential: 'Medium',\n      example: `\"Best ${niche} courses I've taken\"`\n    }\n  ],\n  \n  // Community\n  community: [\n    {\n      type: 'Paid Community / Membership',\n      description: `Exclusive ${niche} community`,\n      price: '$9-49/month',\n      effort: 'Medium',\n      potential: 'High (recurring!)',\n      example: `\"${niche} Inner Circle\"`\n    },\n    {\n      type: 'Newsletter',\n      description: `Premium ${niche} newsletter`,\n      price: '$5-15/month',\n      effort: 'Medium',\n      potential: 'Medium (recurring!)',\n      example: `\"Weekly ${niche} Insights\"`\n    }\n  ],\n  \n  // Sponsorships\n  sponsorships: [\n    {\n      type: 'Brand Deals',\n      description: `Partner with ${niche} brands`,\n      price: '$100-10000/post',\n      effort: 'Low',\n      potential: 'High',\n      example: `Sponsored carousel or reel`\n    },\n    {\n      type: 'Product Reviews',\n      description: `Review ${niche} products`,\n      price: '$50-500/review',\n      effort: 'Low',\n      potential: 'Medium',\n      example: `\"Honest review of [product]\"`\n    }\n  ]\n};\n\n// Audience insights for product fit\nconst audienceInsights = {\n  painPoints: kb.painPoints || [],\n  desires: kb.desires || [],\n  questions: kb.questions || [],\n  language: kb.audienceLanguage || [],\n  personas: kb.audiencePersonas || []\n};\n\n// Recommend best strategy\nlet recommendedStrategy = 'digitalProducts';\nlet reasoning = '';\n\nif (readinessLevel === 'READY_NOW') {\n  if (audienceInsights.painPoints.length > 5) {\n    recommendedStrategy = 'digitalProducts';\n    reasoning = 'Your audience has clear pain points — create a product that solves them!';\n  } else if (totalFollowers > 5000) {\n    recommendedStrategy = 'community';\n    reasoning = 'You have enough followers to build a paid community!';\n  } else {\n    recommendedStrategy = 'affiliate';\n    reasoning = 'Start with affiliate marketing while building your own products!';\n  }\n}\n\nreturn [{\n  json: {\n    chatId,\n    niche,\n    readinessLevel,\n    readinessScore,\n    totalViews,\n    totalFollowers,\n    avgEngagement: Math.round(avgEngagement),\n    monetizationStrategies,\n    recommendedStrategy,\n    reasoning,\n    audienceInsights\n  }\n}];"
+      },
+      "id": "monetize-analyzer",
+      "name": "📊 Monetization Analyzer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=💰 *MONETIZATION STRATEGY REPORT*\n\n📊 *Your Stats:*\n👁️ Total Views: {{ $json.totalViews.toLocaleString() }}\n👥 Followers: {{ $json.totalFollowers.toLocaleString() }}\n📈 Avg Engagement: {{ $json.avgEngagement }}\n🎯 Readiness: {{ $json.readinessLevel }} ({{ $json.readinessScore }}/100)\n\n{{ $json.readinessLevel === 'READY_NOW' ? '🟢 YOU ARE READY TO MONETIZE!' : $json.readinessLevel === 'ALMOST_READY' ? '🟡 Almost there — a few more weeks of growth!' : '🟣 Building phase — focus on growth first, monetize later' }}\n\n🏆 *Recommended Strategy:* {{ $json.recommendedStrategy }}\n💡 {{ $json.reasoning }}\n\n📦 *Top Product Ideas for {{ $json.niche }}:*\n{{ $json.monetizationStrategies[$json.recommendedStrategy].map((s, i) => `${i+1}. *${s.type}* — ${s.price}\\n   ${s.example}`).join('\\n') }}\n\n💬 Let's discuss! Tell me which product interests you and I'll help you create it! 🚀",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-monetize-report",
+      "name": "📤 Send Monetization Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [680, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== PRODUCT CREATION GUIDE =====\n// When user chooses a product, generates creation guide\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst kb = staticData.knowledgeBase || {};\n\n// This will be triggered when user responds with product choice\n// For now, prepare product creation templates\n\nconst productTemplates = {\n  ebook: {\n    steps: [\n      '1️⃣ Outline: Structure your ebook based on audience pain points',\n      '2️⃣ Write: Use AI to help draft each chapter',\n      '3️⃣ Design: Use Canva (free) for cover and layout',\n      '4️⃣ Format: Export as PDF',\n      '5️⃣ Sell: Use Gumroad (free) or Payhip (free) to sell',\n      '6️⃣ Promote: Create carousel posts teasing the content'\n    ],\n    tools: ['Canva (free)', 'Gumroad (free)', 'Payhip (free)', 'Google Docs (free)'],\n    launchStrategy: [\n      'Tease content for 1 week with carousel posts',\n      'Share free chapter as lead magnet',\n      'Launch with limited-time discount',\n      'Use countdown stories',\n      'Get testimonials from first buyers'\n    ]\n  },\n  \n  course: {\n    steps: [\n      '1️⃣ Curriculum: Design based on what audience wants to learn',\n      '2️⃣ Record: Use Loom (free) or phone camera',\n      '3️⃣ Edit: Use CapCut (free) for editing',\n      '4️⃣ Host: Use Teachable (free tier) or Gumroad',\n      '5️⃣ Price: Start at $47-97, increase as you get testimonials',\n      '6️⃣ Launch: Webinar-style launch with free value first'\n    ],\n    tools: ['Loom (free)', 'CapCut (free)', 'Teachable (free tier)', 'Zoom (free)'],\n    launchStrategy: [\n      'Run free webinar/workshop first',\n      'Share student results and testimonials',\n      'Create urgency with limited enrollment',\n      'Offer payment plan option',\n      'Follow up with DMs to engaged followers'\n    ]\n  },\n  \n  community: {\n    steps: [\n      '1️⃣ Platform: Choose Skool ($99/mo) or Discord (free) or Telegram (free)',\n      '2️⃣ Structure: Create channels for different topics',\n      '3️⃣ Content: Daily value posts, weekly Q&A, monthly challenges',\n      '4️⃣ Price: Start at $9-29/month',\n      '5️⃣ Growth: Offer free trial period',\n      '6️⃣ Retention: Consistent value delivery'\n    ],\n    tools: ['Discord (free)', 'Telegram (free)', 'Skool ($99/mo)', 'Circle ($39/mo)'],\n    launchStrategy: [\n      'Start with 10 founding members at discount',\n      'Share community wins and results',\n      'Create FOMO with exclusive content',\n      'Run challenges to drive engagement',\n      'Member referral program'\n    ]\n  },\n  \n  affiliate: {\n    steps: [\n      '1️⃣ Find: Research tools/products in your niche',\n      '2️⃣ Apply: Sign up for affiliate programs',\n      '3️⃣ Test: Actually use the products',\n      '4️⃣ Create: Honest review content',\n      '5️⃣ Track: Use unique affiliate links',\n      '6️⃣ Optimize: Double down on what converts'\n    ],\n    tools: ['Amazon Associates (free)', 'ShareASale (free)', 'Impact (free)', 'Direct brand partnerships'],\n    launchStrategy: [\n      'Create \"tools I use\" carousel',\n      'Do honest product reviews',\n      'Comparison posts (this vs that)',\n      'Tutorial content using the product',\n      'Share personal results'\n    ]\n  }\n};\n\n// DM automation template\nconst dmAutomation = {\n  trigger: 'When someone comments \"LINK\" or \"INFO\" on a post',\n  message: `Hey {{name}}! 👋\\n\\nThanks for your interest! Here's the link: {{productUrl}}\\n\\nLet me know if you have any questions! 💬`,\n  followUp: `Hey {{name}}, did you get a chance to check out the {{product}}? Happy to answer any questions! 🙌`,\n  tools: ['ManyChat (free tier)', 'Instagram DM API', 'n8n webhook trigger']\n};\n\nreturn [{\n  json: {\n    chatId: input.chatId,\n    productTemplates,\n    dmAutomation\n  }\n}];"
+      },
+      "id": "product-templates",
+      "name": "📦 Product Templates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=📦 *PRODUCT CREATION READY*\n\nI've prepared product creation guides for you! Here's what we can build:\n\n📚 *Digital Products:*\n• E-Book / Guide — Quick to create, high margin\n• Online Course — Higher price, more effort\n• Templates — Easy passive income\n\n👥 *Community:*\n• Paid Membership — Recurring revenue!\n• Telegram/Discord group\n\n🤝 *Affiliate:*\n• Tool recommendations\n• Product reviews\n\n💬 *Which one interests you?*\n\nJust tell me: \"Let's create an ebook\" or \"I want to start a community\" and I'll walk you through EVERY step! 🚀\n\nAlso, I can set up *DM automation* so when people comment \"LINK\" on your posts, they automatically get your product link! 🤖💬",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-product-options",
+      "name": "📤 Send Product Options",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1120, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "📥 Monetize Trigger": {
+      "main": [
+        [
+          {
+            "node": "📊 Monetization Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Monetization Analyzer": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Monetization Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📤 Send Monetization Report": {
+      "main": [
+        [
+          {
+            "node": "📦 Product Templates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Product Templates": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Product Options",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

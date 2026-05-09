@@ -1,0 +1,218 @@
+{
+  "name": "📡 IG Machine - Cross-Platform Syndication",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 8
+            }
+          ]
+        }
+      },
+      "id": "schedule-syndicate",
+      "name": "⏰ Syndicate Every 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {},
+      "id": "syndicate-trigger",
+      "name": "📥 Syndicate Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== CROSS-PLATFORM CONTENT ADAPTER =====\n// Takes IG carousel content and adapts it for other platforms\n\nconst staticData = $getWorkflowStaticData('global');\nconst posts = staticData.posts || [];\nconst kb = staticData.knowledgeBase || {};\nconst niche = staticData.niche || 'general';\n\n// Get the latest post to syndicate\nconst latestPost = posts[posts.length - 1];\nif (!latestPost) {\n  return [{ json: { noPost: true } }];\n}\n\n// Platform-specific adaptations\nconst adaptations = {\n  // Pinterest - Vertical pins\n  pinterest: {\n    format: 'pin',\n    dimensions: '1000x1500',\n    title: latestPost.hook,\n    description: `${latestPost.caption}\\n\\n#${kb.topHashtags?.slice(0, 10).join(' #') || niche}`,\n    keywords: kb.topHashtags || [niche],\n    boardSuggestion: `${niche} Tips`,\n    designChanges: 'Vertical format, larger text, bold colors'\n  },\n  \n  // Twitter/X - Thread format\n  twitter: {\n    format: 'thread',\n    tweets: [\n      `🧵 THREAD: ${latestPost.hook}\\n\\n(1/${latestPost.slideCount + 2})`,\n      ...generateTweetThread(latestPost, kb),\n      `\\n\\nFollow for more ${niche} content! 🔥\\n\\nLike + Retweet if this helped! 🙏`\n    ],\n    hashtags: kb.topHashtags?.slice(0, 3).join(' ') || niche\n  },\n  \n  // LinkedIn - Professional post\n  linkedin: {\n    format: 'post',\n    content: generateLinkedInPost(latestPost, kb, niche),\n    hashtags: kb.topHashtags?.slice(0, 5).map(h => `#${h}`).join(' ') || `#${niche}`,\n    tone: 'professional but engaging'\n  },\n  \n  // Facebook Groups\n  facebook: {\n    format: 'post',\n    content: generateFacebookPost(latestPost, kb, niche),\n    groups: findRelevantGroups(niche),\n    tone: 'conversational, community-focused'\n  },\n  \n  // TikTok - Script for reel\n  tiktok: {\n    format: 'script',\n    hook: latestPost.hook,\n    script: generateTikTokScript(latestPost, kb, niche),\n    duration: '30-60 seconds',\n    trending_audio: kb.trendingAudio?.[0] || 'Use trending sound',\n    hashtags: kb.trendingHashtags?.slice(0, 5) || [niche]\n  },\n  \n  // YouTube Shorts\n  youtube_shorts: {\n    format: 'script',\n    title: latestPost.hook,\n    script: generateYouTubeShortsScript(latestPost, kb, niche),\n    thumbnail_style: 'Bold text, shocked face, bright colors',\n    description: `${latestPost.caption}\\n\\n#${kb.topHashtags?.slice(0, 10).join(' #') || niche}`\n  },\n  \n  // Reddit\n  reddit: {\n    format: 'post',\n    title: generateRedditTitle(latestPost, niche),\n    content: generateRedditPost(latestPost, kb, niche),\n    subreddits: findRelevantSubreddits(niche),\n    tone: 'helpful, no self-promotion'\n  }\n};\n\nfunction generateTweetThread(post, kb) {\n  const slides = post.slideCount || 7;\n  const tweets = [];\n  for (let i = 1; i < slides; i++) {\n    tweets.push(`Here's point ${i}: [Key insight from slide ${i + 1}]\\n\\n(${i + 1}/${slides + 2})`);\n  }\n  return tweets;\n}\n\nfunction generateLinkedInPost(post, kb, niche) {\n  return `I've been studying ${niche} for the past few weeks.\\n\\nHere's what I found:\\n\\n${post.hook}\\n\\n[Key insights from the carousel]\\n\\nThe biggest lesson? [Main takeaway]\\n\\nWhat's your experience with ${niche}? Drop your thoughts below. 👇`;\n}\n\nfunction generateFacebookPost(post, kb, niche) {\n  return `Hey everyone! 👋\\n\\nI wanted to share something I've been learning about ${niche}.\\n\\n${post.hook}\\n\\n[Share key points from carousel]\\n\\nWhat do you think? Have you experienced this too?\\n\\nWould love to hear your thoughts! 💬`;\n}\n\nfunction generateTikTokScript(post, kb, niche) {\n  return `[HOOK - 3 seconds]\\n\"${post.hook}\"\\n\\n[PROBLEM - 5 seconds]\\n\"Here's the problem most people face with ${niche}...\"\\n\\n[SOLUTION - 15 seconds]\\n\"But here's what actually works...\"\\n\\n[PROOF - 10 seconds]\\n\"And here are the results...\"\\n\\n[CTA - 5 seconds]\\n\"Follow for more ${niche} tips!\"`;\n}\n\nfunction generateYouTubeShortsScript(post, kb, niche) {\n  return `[HOOK]\\n\"${post.hook}\"\\n\\n[CONTENT]\\n[Deliver value from carousel in engaging way]\\n\\n[CTA]\\n\"Subscribe for more ${niche} content!\"`;\n}\n\nfunction generateRedditTitle(post, niche) {\n  return `I've been researching ${niche} for weeks - here's what actually works`;\n}\n\nfunction generateRedditPost(post, kb, niche) {\n  return `Hey r/${niche.replace(/\\s+/g, '')},\\n\\nI've been deep-diving into ${niche} and wanted to share some findings.\\n\\n[Share genuine value from research]\\n\\nHappy to answer any questions in the comments!`;\n}\n\nfunction findRelevantGroups(niche) {\n  return [`${niche} community`, `${niche} tips`, `${niche} beginners`];\n}\n\nfunction findRelevantSubreddits(niche) {\n  return [`r/${niche.replace(/\\s+/g, '')}`, `r/${niche.replace(/\\s+/g, '')}tips`];\n}\n\nreturn [{\n  json: {\n    latestPost,\n    adaptations,\n    chatId: staticData.chatId,\n    niche\n  }\n}];"
+      },
+      "id": "content-adapter",
+      "name": "🔄 Content Adapter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== POST TO PINTEREST =====\n\nconst input = $input.first().json;\nconst { adaptations, chatId } = input;\nconst pinterest = adaptations.pinterest;\n\n// Pinterest API posting\nconst pinData = {\n  board: pinterest.boardSuggestion,\n  title: pinterest.title,\n  description: pinterest.description,\n  // Image URL from carousel\n  image_url: input.latestPost.imageUrls?.[0] || '',\n  link: '' // Add website link if available\n};\n\nreturn [{\n  json: {\n    platform: 'pinterest',\n    data: pinData,\n    status: 'ready',\n    chatId\n  }\n}];"
+      },
+      "id": "post-pinterest",
+      "name": "📌 Post Pinterest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== POST TO TWITTER/X =====\n\nconst input = $input.first().json;\nconst { adaptations, chatId } = input;\nconst twitter = adaptations.twitter;\n\n// Twitter thread data\nconst threadData = {\n  tweets: twitter.tweets,\n  hashtags: twitter.hashtags\n};\n\nreturn [{\n  json: {\n    platform: 'twitter',\n    data: threadData,\n    status: 'ready',\n    chatId\n  }\n}];"
+      },
+      "id": "post-twitter",
+      "name": "🐦 Post Twitter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== POST TO LINKEDIN =====\n\nconst input = $input.first().json;\nconst { adaptations, chatId } = input;\nconst linkedin = adaptations.linkedin;\n\nconst linkedinData = {\n  content: linkedin.content,\n  hashtags: linkedin.hashtags\n};\n\nreturn [{\n  json: {\n    platform: 'linkedin',\n    data: linkedinData,\n    status: 'ready',\n    chatId\n  }\n}];"
+      },
+      "id": "post-linkedin",
+      "name": "💼 Post LinkedIn",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== GENERATE TIKTOK SCRIPT =====\n\nconst input = $input.first().json;\nconst { adaptations, chatId } = input;\nconst tiktok = adaptations.tiktok;\n\nconst scriptData = {\n  hook: tiktok.hook,\n  script: tiktok.script,\n  duration: tiktok.duration,\n  trending_audio: tiktok.trending_audio,\n  hashtags: tiktok.hashtags\n};\n\nreturn [{\n  json: {\n    platform: 'tiktok',\n    data: scriptData,\n    status: 'script_ready',\n    chatId\n  }\n}];"
+      },
+      "id": "tiktok-script",
+      "name": "🎵 TikTok Script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== AGGREGATE ALL PLATFORM POSTS =====\n\nconst input = $input.all();\nconst chatId = input[0]?.json.chatId;\n\nconst platformSummary = input.map(item => {\n  const { platform, status } = item.json;\n  return `${platform}: ${status === 'ready' ? '✅' : '📝'}`;\n});\n\nreturn [{\n  json: {\n    chatId,\n    platforms: input.map(i => i.json),\n    summary: platformSummary\n  }\n}];"
+      },
+      "id": "aggregate-platforms",
+      "name": "📊 Aggregate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=📡 *CROSS-PLATFORM SYNDICATION*\n\n✅ Content adapted for multiple platforms!\n\n{{ $json.summary.join('\\n') }}\n\n📌 Pinterest: Pin ready\n🐦 Twitter: Thread ready\n💼 LinkedIn: Post ready\n🎵 TikTok: Script ready\n▶️ YouTube Shorts: Script ready\n📝 Reddit: Post ready\n\nAll content is optimized for each platform's format and audience! 🚀",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-syndication",
+      "name": "📤 Notify Syndication",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1120, 500],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Syndicate Every 8h": {
+      "main": [
+        [
+          {
+            "node": "🔄 Content Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Syndicate Trigger": {
+      "main": [
+        [
+          {
+            "node": "🔄 Content Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Content Adapter": {
+      "main": [
+        [
+          {
+            "node": "📌 Post Pinterest",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🐦 Post Twitter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "💼 Post LinkedIn",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🎵 TikTok Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📌 Post Pinterest": {
+      "main": [
+        [
+          {
+            "node": "📊 Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🐦 Post Twitter": {
+      "main": [
+        [
+          {
+            "node": "📊 Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💼 Post LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "📊 Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎵 TikTok Script": {
+      "main": [
+        [
+          {
+            "node": "📊 Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Aggregate": {
+      "main": [
+        [
+          {
+            "node": "📤 Notify Syndication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

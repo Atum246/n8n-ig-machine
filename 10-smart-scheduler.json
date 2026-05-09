@@ -1,0 +1,100 @@
+{
+  "name": "⏰ IG Machine - Smart Scheduler & A/B Testing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-check",
+      "name": "⏰ Check Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SMART SCHEDULER =====\n// Determines optimal posting times based on data\n\nconst staticData = $getWorkflowStaticData('global');\nconst posts = staticData.posts || [];\nconst kb = staticData.knowledgeBase || {};\n\n// Analyze historical performance by time\nconst timePerformance = {};\nconst dayPerformance = {};\n\nfor (const post of posts) {\n  if (!post.createdAt || !post.views) continue;\n  \n  const date = new Date(post.createdAt);\n  const hour = date.getHours();\n  const day = date.getDay(); // 0=Sun, 6=Sat\n  \n  if (!timePerformance[hour]) timePerformance[hour] = { totalViews: 0, count: 0 };\n  timePerformance[hour].totalViews += post.views;\n  timePerformance[hour].count++;\n  \n  if (!dayPerformance[day]) dayPerformance[day] = { totalViews: 0, count: 0 };\n  dayPerformance[day].totalViews += post.views;\n  dayPerformance[day].count++;\n}\n\n// Calculate average views per time slot\nconst avgByHour = Object.entries(timePerformance).map(([hour, data]) => ({\n  hour: parseInt(hour),\n  avgViews: Math.round(data.totalViews / data.count),\n  posts: data.count\n})).sort((a, b) => b.avgViews - a.avgViews);\n\nconst avgByDay = Object.entries(dayPerformance).map(([day, data]) => ({\n  day: parseInt(day),\n  dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][parseInt(day)],\n  avgViews: Math.round(data.totalViews / data.count),\n  posts: data.count\n})).sort((a, b) => b.avgViews - a.avgViews);\n\n// Best posting times\nconst bestHours = avgByHour.slice(0, 3).map(h => `${h.hour}:00 (${h.avgViews} avg views)`);\nconst bestDays = avgByDay.slice(0, 3).map(d => `${d.dayName} (${d.avgViews} avg views)`);\n\n// Determine next optimal post time\nconst now = new Date();\nconst currentHour = now.getHours();\nconst currentDay = now.getDay();\n\nlet nextPostTime = null;\n\n// Check if we should post now\nconst isGoodTime = avgByHour.some(h => h.hour === currentHour && h.avgViews > 500);\nconst isGoodDay = avgByDay.some(d => d.day === currentDay && d.avgViews > 500);\n\nif (isGoodTime && isGoodDay) {\n  nextPostTime = now.toISOString();\n} else {\n  // Find next best time\n  const bestHour = avgByHour[0]?.hour || 12;\n  const nextPost = new Date(now);\n  \n  if (currentHour >= bestHour) {\n    nextPost.setDate(nextPost.getDate() + 1);\n  }\n  nextPost.setHours(bestHour, 0, 0, 0);\n  nextPostTime = nextPost.toISOString();\n}\n\n// A/B Test tracking\nconst abTests = staticData.abTests || [];\nconst activeTests = abTests.filter(t => t.status === 'active');\n\n// Check A/B test results\nconst completedTests = [];\nfor (const test of activeTests) {\n  const testPosts = posts.filter(p => p.abTestId === test.id);\n  if (testPosts.length >= 2) {\n    const winner = testPosts.reduce((best, p) => (p.views || 0) > (best.views || 0) ? p : best);\n    test.status = 'completed';\n    test.winner = winner.id;\n    test.winningHook = winner.hook;\n    test.winningViews = winner.views;\n    completedTests.push(test);\n  }\n}\n\n// Generate posting schedule for next 7 days\nconst schedule = [];\nfor (let i = 0; i < 7; i++) {\n  const date = new Date(now);\n  date.setDate(date.getDate() + i);\n  \n  const bestHourForDay = avgByHour.find(h => h.hour >= 9)?.hour || 12;\n  date.setHours(bestHourForDay, 0, 0, 0);\n  \n  schedule.push({\n    date: date.toISOString().split('T')[0],\n    time: `${bestHourForDay}:00`,\n    dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()],\n    expectedViews: avgByHour.find(h => h.hour === bestHourForDay)?.avgViews || 'Unknown'\n  });\n}\n\nreturn [{\n  json: {\n    bestHours,\n    bestDays,\n    nextPostTime,\n    schedule,\n    completedTests,\n    activeTests: activeTests.length,\n    chatId: staticData.chatId\n  }\n}];"
+      },
+      "id": "smart-scheduler",
+      "name": "📅 Smart Scheduler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== HOOK SPLIT TESTER =====\n// Generates multiple hooks for A/B testing\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst kb = staticData.knowledgeBase || {};\nconst niche = staticData.niche || 'your niche';\n\n// Hook templates based on psychology\nconst hookTemplates = [\n  // Curiosity Gap\n  {\n    type: 'curiosity_gap',\n    templates: [\n      `The #1 thing about ${niche} nobody tells you...`,\n      `I tried ${niche} for 30 days. Here's what happened...`,\n      `Why experts don't want you to know this about ${niche}...`,\n      `The secret ${niche} strategy that changed everything...`\n    ]\n  },\n  // Fear of Missing Out\n  {\n    type: 'fomo',\n    templates: [\n      `Stop doing ${niche} wrong before it's too late...`,\n      `If you're not doing this in ${niche}, you're falling behind...`,\n      `99% of people get ${niche} wrong. Are you one of them?`,\n      `This ${niche} mistake is costing you everything...`\n    ]\n  },\n  // Social Proof\n  {\n    type: 'social_proof',\n    templates: [\n      `How I went from 0 to 100K in ${niche}...`,\n      `The ${niche} method that's working for thousands...`,\n      `Why top ${niche} creators swear by this...`,\n      `The ${niche} trick that got me 1M views...`\n    ]\n  },\n  // Direct Value\n  {\n    type: 'direct_value',\n    templates: [\n      `5 ${niche} tips that actually work...`,\n      `The ultimate ${niche} guide (save this!)...`,\n      `${niche} for beginners: everything you need to know...`,\n      `The only ${niche} advice you'll ever need...`\n    ]\n  },\n  // Emotional\n  {\n    type: 'emotional',\n    templates: [\n      `I wish I knew this when I started ${niche}...`,\n      `The ${niche} truth that no one talks about...`,\n      `Why ${niche} is harder than it looks (and what to do)...`,\n      `The moment ${niche} finally clicked for me...`\n    ]\n  }\n];\n\n// Generate hooks for next post\nconst hooksForTesting = hookTemplates.map(template => ({\n  type: template.type,\n  hook: template.templates[Math.floor(Math.random() * template.templates.length)]\n}));\n\n// Create A/B test\nconst abTest = {\n  id: `ab_${Date.now()}`,\n  hooks: hooksForTesting,\n  status: 'active',\n  createdAt: new Date().toISOString(),\n  results: []\n};\n\nif (!staticData.abTests) staticData.abTests = [];\nstaticData.abTests.push(abTest);\n\nreturn [{\n  json: {\n    ...input,\n    abTest,\n    hooksForTesting\n  }\n}];"
+      },
+      "id": "hook-tester",
+      "name": "🎣 Hook A/B Tester",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=📅 *SMART SCHEDULING REPORT*\n\n⏰ *Best Posting Times (learned from YOUR data):*\n{{ $json.bestHours.join('\\n') }}\n\n📆 *Best Days:*\n{{ $json.bestDays.join('\\n') }}\n\n🎯 *Next Optimal Post Time:*\n{{ $json.nextPostTime }}\n\n📋 *7-Day Schedule:*\n{{ $json.schedule.map(s => `${s.dayName} ${s.date} at ${s.time} (~${s.expectedViews} views)`).join('\\n') }}\n\n🧪 *A/B Testing:*\nActive Tests: {{ $json.activeTests }}\n{{ $json.completedTests.length > 0 ? '✅ Completed: ' + $json.completedTests.map(t => `\"${t.winningHook}\" won with ${t.winningViews} views`).join(', ') : '' }}\n\n💡 *Next Post Hooks (pick one or I'll use the best):*\n{{ $json.hooksForTesting?.map((h, i) => `${i+1}. [${h.type}] \"${h.hook}\"`).join('\\n') }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-schedule",
+      "name": "📤 Send Schedule",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [900, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Check Every Hour": {
+      "main": [
+        [
+          {
+            "node": "📅 Smart Scheduler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📅 Smart Scheduler": {
+      "main": [
+        [
+          {
+            "node": "🎣 Hook A/B Tester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎣 Hook A/B Tester": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

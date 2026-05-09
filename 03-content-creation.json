@@ -1,0 +1,217 @@
+{
+  "name": "🎨 IG Machine - Content Creation Engine",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "create-trigger",
+      "name": "📥 Create Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== CONTENT STRATEGY SELECTOR =====\n// Picks the best content angle based on knowledge base\n\nconst input = $input.first().json;\nconst state = input.state || {};\nconst chatId = input.chatId;\n\n// Get knowledge base from static data\nconst staticData = $getWorkflowStaticData('global');\nconst kb = staticData.knowledgeBase || {};\n\n// Select best hook from knowledge base\nconst hooks = kb.topHooks || [\n  'Stop scrolling if you...',\n  'The truth about...',\n  'Nobody talks about this...',\n  'I wish I knew this sooner...',\n  'The #1 mistake people make...',\n  'This changed everything for me...',\n  'You\\'re doing it wrong if...',\n  'The secret that experts won\\'t tell you...'\n];\n\n// Select random hook for A/B testing\nconst selectedHook = hooks[Math.floor(Math.random() * hooks.length)];\n\n// Select content angle\nconst contentIdeas = kb.contentIdeas || [\n  'Common mistakes in the niche',\n  'Beginner tips that actually work',\n  'Top 5 things to know',\n  'Myth vs Reality',\n  'Step by step guide',\n  'What I learned after X years',\n  'The hard truth about...'\n];\nconst selectedIdea = contentIdeas[Math.floor(Math.random() * contentIdeas.length)];\n\n// Select hashtags\nconst hashtags = kb.topHashtags || [];\nconst selectedHashtags = hashtags.slice(0, 20).join(' #') || '#motivation #growth #success';\n\n// Select CTA\nconst ctas = kb.topCTAs || [\n  'Save this for later 🔖',\n  'Share with someone who needs this 💫',\n  'Double tap if you agree ❤️',\n  'Follow for more tips 🚀',\n  'Comment your thoughts below 💬'\n];\nconst selectedCTA = ctas[Math.floor(Math.random() * ctas.length)];\n\n// Select design style based on brand\nconst brandIdentity = state.brandIdentity || 'modern minimalist';\nconst designStyles = kb.designStyles || ['minimalist', 'bold', 'gradient', 'dark mode'];\nconst selectedDesign = designStyles[Math.floor(Math.random() * designStyles.length)];\n\n// Select color palette\nconst colorPalettes = kb.colorPalettes || [\n  { bg: '#1a1a2e', text: '#ffffff', accent: '#e94560' },\n  { bg: '#0f0f0f', text: '#ffffff', accent: '#00ff88' },\n  { bg: '#ffffff', text: '#1a1a1a', accent: '#ff6b35' }\n];\nconst selectedColors = colorPalettes[Math.floor(Math.random() * colorPalettes.length)];\n\n// Caption template\nconst captionTemplates = kb.captionTemplates || [];\nconst painPoints = kb.painPoints || [];\n\nconst caption = `${selectedHook}\\n\\n${selectedIdea}\\n\\n${painPoints.length > 0 ? '💡 ' + painPoints[0] : ''}\\n\\n${selectedCTA}\\n\\n.#${selectedHashtags}`;\n\n// Carousel structure (6-10 slides)\nconst slideCount = 7;\nconst slides = [\n  { type: 'cover', content: selectedHook, subtitle: selectedIdea },\n  { type: 'problem', content: painPoints[0] || 'The biggest struggle in this niche' },\n  { type: 'agitation', content: painPoints[1] || 'Why most people fail' },\n  { type: 'solution', content: 'The game-changing approach' },\n  { type: 'steps', content: 'Step by step breakdown' },\n  { type: 'proof', content: 'Results and evidence' },\n  { type: 'cta', content: selectedCTA }\n];\n\nreturn [{\n  json: {\n    chatId,\n    hook: selectedHook,\n    idea: selectedIdea,\n    caption,\n    hashtags: selectedHashtags,\n    cta: selectedCTA,\n    designStyle: selectedDesign,\n    colors: selectedColors,\n    brandIdentity,\n    slides,\n    slideCount,\n    state,\n    knowledgeBase: kb,\n    abTestId: Date.now()\n  }\n}];"
+      },
+      "id": "content-strategy",
+      "name": "🎯 Content Strategy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== GENERATE CAROUSEL HTML =====\n// Creates beautiful carousel slides using HTML/CSS/JS\n\nconst input = $input.first().json;\nconst { slides, colors, brandIdentity, hook, idea } = input;\n\n// Generate HTML for each slide\nfunction generateSlideHTML(slide, index, totalSlides) {\n  const brandWatermark = '@YOUR_BRAND'; // Will be replaced with actual brand\n  \n  const baseStyles = `\n    * { margin: 0; padding: 0; box-sizing: border-box; }\n    body {\n      width: 1080px;\n      height: 1080px;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;\n      overflow: hidden;\n    }\n    .slide {\n      width: 1080px;\n      height: 1080px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n      padding: 80px;\n      position: relative;\n      background: ${colors.bg};\n      color: ${colors.text};\n    }\n    .watermark {\n      position: absolute;\n      bottom: 20px;\n      right: 30px;\n      font-size: 16px;\n      opacity: 0.4;\n      letter-spacing: 1px;\n    }\n    .slide-number {\n      position: absolute;\n      bottom: 20px;\n      left: 30px;\n      font-size: 14px;\n      opacity: 0.3;\n    }\n    .accent-line {\n      width: 80px;\n      height: 4px;\n      background: ${colors.accent};\n      margin: 20px 0;\n      border-radius: 2px;\n    }\n  `;\n  \n  let slideContent = '';\n  \n  switch(slide.type) {\n    case 'cover':\n      slideContent = `\n        <div class=\"slide\" style=\"background: linear-gradient(135deg, ${colors.bg}, ${colors.accent}22);\">\n          <div style=\"text-align: center;\">\n            <div style=\"font-size: 28px; letter-spacing: 8px; text-transform: uppercase; opacity: 0.6; margin-bottom: 30px;\">Swipe to learn →</div>\n            <div class=\"accent-line\" style=\"margin: 0 auto 30px;\"></div>\n            <h1 style=\"font-size: 64px; font-weight: 800; line-height: 1.2; margin-bottom: 20px;\">${slide.content}</h1>\n            <p style=\"font-size: 24px; opacity: 0.7; max-width: 700px;\">${slide.subtitle}</p>\n          </div>\n          <div class=\"watermark\">${brandWatermark}</div>\n          <div class=\"slide-number\">1/${totalSlides}</div>\n        </div>\n      `;\n      break;\n      \n    case 'problem':\n      slideContent = `\n        <div class=\"slide\">\n          <div style=\"text-align: center;\">\n            <div style=\"font-size: 100px; margin-bottom: 30px;\">😤</div>\n            <h2 style=\"font-size: 48px; font-weight: 700; margin-bottom: 20px;\">The Problem</h2>\n            <div class=\"accent-line\" style=\"margin: 0 auto 30px;\"></div>\n            <p style=\"font-size: 32px; line-height: 1.6; max-width: 800px;\">${slide.content}</p>\n          </div>\n          <div class=\"watermark\">${brandWatermark}</div>\n          <div class=\"slide-number\">2/${totalSlides}</div>\n        </div>\n      `;\n      break;\n      \n    case 'agitation':\n      slideContent = `\n        <div class=\"slide\" style=\"background: linear-gradient(135deg, ${colors.bg}, #ff000022);\">\n          <div style=\"text-align: center;\">\n            <div style=\"font-size: 100px; margin-bottom: 30px;\">⚠️</div>\n            <h2 style=\"font-size: 48px; font-weight: 700; margin-bottom: 20px;\">Why This Matters</h2>\n            <div class=\"accent-line\" style=\"margin: 0 auto 30px; background: #ff4444;\"></div>\n            <p style=\"font-size: 32px; line-height: 1.6; max-width: 800px;\">${slide.content}</p>\n          </div>\n          <div class=\"watermark\">${brandWatermark}</div>\n          <div class=\"slide-number\">3/${totalSlides}</div>\n        </div>\n      `;\n      break;\n      \n    case 'solution':\n      slideContent = `\n        <div class=\"slide\" style=\"background: linear-gradient(135deg, ${colors.bg}, ${colors.accent}33);\">\n          <div style=\"text-align: center;\">\n            <div style=\"font-size: 100px; margin-bottom: 30px;\">💡</div>\n            <h2 style=\"font-size: 48px; font-weight: 700; margin-bottom: 20px;\">The Solution</h2>\n            <div class=\"accent-line\" style=\"margin: 0 auto 30px;\"></div>\n            <p style=\"font-size: 32px; line-height: 1.6; max-width: 800px;\">${slide.content}</p>\n          </div>\n          <div class=\"watermark\">${brandWatermark}</div>\n          <div class=\"slide-number\">4/${totalSlides}</div>\n        </div>\n      `;\n      break;\n      \n    case 'steps':\n      const steps = [\n        'Start with the basics',\n        'Build consistent habits',\n        'Track your progress',\n        'Adjust and optimize'\n      ];\n      const stepsHTML = steps.map((s, i) => `\n        <div style=\"display: flex; align-items: center; margin: 15px 0; text-align: left; width: 100%; max-width: 700px;\">\n          <div style=\"min-width: 60px; height: 60px; background: ${colors.accent}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; margin-right: 25px;\">${i+1}</div>\n          <p style=\"font-size: 28px; line-height: 1.4;\">${s}</p>\n        </div>\n      `).join('');\n      \n      slideContent = `\n        <div class=\"slide\">\n          <div style=\"text-align: center; width: 100%;\">\n            <h2 style=\"font-size: 48px; font-weight: 700; margin-bottom: 40px;\">How To Do It</h2>\n            <div class=\"accent-line\" style=\"margin: 0 auto 40px;\"></div>\n            <div style=\"display: flex; flex-direction: column; align-items: center;\">\n              ${stepsHTML}\n            </div>\n          </div>\n          <div class=\"watermark\">${brandWatermark}</div>\n          <div class=\"slide-number\">5/${totalSlides}</div>\n        </div>\n      `;\n      break;\n      \n    case 'proof':\n      slideContent = `\n        <div class=\"slide\" style=\"background: linear-gradient(135deg, ${colors.bg}, ${colors.accent}22);\">\n          <div style=\"text-align: center;\">\n            <div style=\"font-size: 100px; margin-bottom: 30px;\">🏆</div>\n            <h2 style=\"font-size: 48px; font-weight: 700; margin-bottom: 20px;\">Results Don't Lie</h2>\n            <div class=\"accent-line\" style=\"margin: 0 auto 30px;\"></div>\n            <p style=\"font-size: 32px; line-height: 1.6; max-width: 800px;\">${slide.content}</p>\n            <div style=\"margin-top: 40px; font-size: 80px; font-weight: 900; color: ${colors.accent};\">+300%</div>\n            <p style=\"font-size: 24px; opacity: 0.6;\">improvement guaranteed</p>\n          </div>\n          <div class=\"watermark\">${brandWatermark}</div>\n          <div class=\"slide-number\">6/${totalSlides}</div>\n        </div>\n      `;\n      break;\n      \n    case 'cta':\n      slideContent = `\n        <div class=\"slide\" style=\"background: linear-gradient(135deg, ${colors.accent}44, ${colors.bg});\">\n          <div style=\"text-align: center;\">\n            <div style=\"font-size: 100px; margin-bottom: 30px;\">🔥</div>\n            <h2 style=\"font-size: 52px; font-weight: 800; margin-bottom: 20px;\">${slide.content}</h2>\n            <div class=\"accent-line\" style=\"margin: 0 auto 30px;\"></div>\n            <p style=\"font-size: 28px; opacity: 0.8;\">Follow @YOUR_BRAND for more</p>\n            <div style=\"margin-top: 40px; padding: 15px 40px; background: ${colors.accent}; border-radius: 50px; display: inline-block;\">\n              <p style=\"font-size: 24px; font-weight: 700;\">FOLLOW →</p>\n            </div>\n          </div>\n          <div class=\"watermark\">${brandWatermark}</div>\n          <div class=\"slide-number\">7/${totalSlides}</div>\n        </div>\n      `;\n      break;\n  }\n  \n  return `<!DOCTYPE html>\n<html>\n<head>\n  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap\" rel=\"stylesheet\">\n  <style>${baseStyles}</style>\n</head>\n<body>${slideContent}</body>\n</html>`;\n}\n\n// Generate all slides\nconst slidesHTML = slides.map((slide, index) => ({\n  html: generateSlideHTML(slide, index, slides.length),\n  type: slide.type,\n  index: index\n}));\n\nreturn [{\n  json: {\n    ...input,\n    slidesHTML\n  }\n}];"
+      },
+      "id": "html-generator",
+      "name": "🖼️ HTML Generator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== BROWSER SCREENSHOT =====\n// Takes screenshots of each HTML slide using Playwright\n// This node outputs URLs for the Playwright browser node\n\nconst input = $input.first().json;\nconst { slidesHTML, abTestId } = input;\n\n// Generate local file paths for each slide\nconst screenshotPaths = slidesHTML.map((slide, index) => ({\n  html: slide.html,\n  outputPath: `/tmp/carousel_${abTestId}_slide_${index + 1}.png`,\n  slideType: slide.type,\n  slideIndex: index\n}));\n\nreturn [{\n  json: {\n    ...input,\n    screenshotPaths\n  }\n}];"
+      },
+      "id": "screenshot-prep",
+      "name": "📸 Screenshot Prep",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.screenshotPaths.map(p => `node -e \"const { chromium } = require('playwright'); (async () => { const browser = await chromium.launch(); const page = await browser.newPage({ viewport: { width: 1080, height: 1080 } }); await page.setContent(${JSON.stringify(p.html)}); await page.screenshot({ path: '${p.outputPath}', type: 'png' }); await browser.close(); })()\"`).join(' && ') }}"
+      },
+      "id": "playwright-screenshot",
+      "name": "🌐 Playwright Screenshot",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== IMAGE UPLOAD TO IMGBB =====\n// Uploads all carousel images to free image hosting\n\nconst input = $input.first().json;\nconst { screenshotPaths, abTestId, caption, hashtags, cta, chatId } = input;\n\n// Prepare upload data for each image\nconst uploadTasks = screenshotPaths.map((path, index) => ({\n  filePath: path.outputPath,\n  slideType: path.slideType,\n  slideIndex: index,\n  fileName: `carousel_${abTestId}_${index + 1}.png`\n}));\n\nreturn [{\n  json: {\n    ...input,\n    uploadTasks\n  }\n}];"
+      },
+      "id": "upload-prep",
+      "name": "☁️ Upload Prep",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== UPLOAD TO TELEGRAPH (FREE) =====\n// Uses Telegram's Telegraph for free image hosting\n\nconst input = $input.first().json;\nconst fs = require('fs');\nconst FormData = require('form-data');\nconst https = require('https');\n\nconst uploadResults = [];\n\nfor (const task of input.uploadTasks) {\n  try {\n    // Read file and convert to base64\n    const fileBuffer = fs.readFileSync(task.filePath);\n    const base64 = fileBuffer.toString('base64');\n    \n    // Upload to Telegraph\n    const result = await new Promise((resolve, reject) => {\n      const postData = JSON.stringify({\n        file: `data:image/png;base64,${base64}`\n      });\n      \n      const options = {\n        hostname: 'telegra.ph',\n        path: '/upload',\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'Content-Length': Buffer.byteLength(postData)\n        }\n      };\n      \n      const req = https.request(options, (res) => {\n        let data = '';\n        res.on('data', (chunk) => data += chunk);\n        res.on('end', () => resolve(JSON.parse(data)));\n      });\n      \n      req.on('error', reject);\n      req.write(postData);\n      req.end();\n    });\n    \n    if (result && result[0] && result[0].src) {\n      uploadResults.push({\n        url: `https://telegra.ph${result[0].src}`,\n        slideType: task.slideType,\n        slideIndex: task.slideIndex\n      });\n    }\n  } catch (error) {\n    uploadResults.push({\n      url: null,\n      error: error.message,\n      slideType: task.slideType,\n      slideIndex: task.slideIndex\n    });\n  }\n}\n\nreturn [{\n  json: {\n    ...input,\n    imageUrls: uploadResults.filter(r => r.url).map(r => r.url),\n    uploadResults\n  }\n}];"
+      },
+      "id": "telegraph-upload",
+      "name": "📤 Telegraph Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== POST TO INSTAGRAM =====\n// Uses Instagram's API to post the carousel\n\nconst input = $input.first().json;\nconst { imageUrls, caption, igCredentials, chatId } = input;\n\n// Instagram Graph API carousel posting\n// Note: This requires Instagram Business account connected via Facebook\n\nconst postResult = {\n  status: 'ready_to_post',\n  imageUrls: imageUrls,\n  caption: caption,\n  hashtags: input.hashtags,\n  cta: input.cta,\n  scheduledTime: null,\n  postType: 'carousel'\n};\n\n// Store post data for tracking\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.posts) staticData.posts = [];\n\nconst postData = {\n  id: `post_${Date.now()}`,\n  createdAt: new Date().toISOString(),\n  hook: input.hook,\n  idea: input.idea,\n  caption: caption,\n  hashtags: input.hashtags,\n  imageUrls: imageUrls,\n  slideCount: imageUrls.length,\n  abTestId: input.abTestId,\n  designStyle: input.designStyle,\n  colors: input.colors,\n  views: 0,\n  likes: 0,\n  comments: 0,\n  saves: 0,\n  shares: 0,\n  reach: 0,\n  impressions: 0,\n  engagementRate: 0,\n  status: 'posted',\n  performanceNotes: []\n};\n\nstaticData.posts.push(postData);\n\nreturn [{\n  json: {\n    ...postResult,\n    postData,\n    chatId\n  }\n}];"
+      },
+      "id": "ig-post",
+      "name": "📱 Instagram Post",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SAVE POST TO NOCODB =====\n// Stores post data for analytics tracking\n\nconst input = $input.first().json;\n\nreturn [{\n  json: {\n    table: 'posts',\n    data: {\n      post_id: input.postData.id,\n      created_at: input.postData.createdAt,\n      hook: input.postData.hook,\n      idea: input.postData.idea,\n      caption: input.postData.caption,\n      hashtags: input.postData.hashtags,\n      image_urls: JSON.stringify(input.postData.imageUrls),\n      slide_count: input.postData.slideCount,\n      ab_test_id: input.postData.abTestId,\n      design_style: input.postData.designStyle,\n      status: 'posted',\n      views: 0,\n      likes: 0,\n      comments: 0,\n      saves: 0,\n      shares: 0\n    },\n    chatId: input.chatId\n  }\n}];"
+      },
+      "id": "save-post-nocodb",
+      "name": "💾 Save Post Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=🚀 *NEW CAROUSEL POSTED!*\n\n📌 Hook: {{ $json.postData.hook }}\n💡 Idea: {{ $json.postData.idea }}\n🖼️ Slides: {{ $json.postData.slideCount }}\n🎨 Design: {{ $json.postData.designStyle }}\n\n📊 I'm now tracking this post's performance. I'll alert you if it goes viral! 🔥\n\nType /analytics to see how all posts are doing 📈",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-post",
+      "name": "📤 Notify Posted",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [2220, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "📥 Create Trigger": {
+      "main": [
+        [
+          {
+            "node": "🎯 Content Strategy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Content Strategy": {
+      "main": [
+        [
+          {
+            "node": "🖼️ HTML Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🖼️ HTML Generator": {
+      "main": [
+        [
+          {
+            "node": "📸 Screenshot Prep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📸 Screenshot Prep": {
+      "main": [
+        [
+          {
+            "node": "🌐 Playwright Screenshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Playwright Screenshot": {
+      "main": [
+        [
+          {
+            "node": "☁️ Upload Prep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "☁️ Upload Prep": {
+      "main": [
+        [
+          {
+            "node": "📤 Telegraph Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📤 Telegraph Upload": {
+      "main": [
+        [
+          {
+            "node": "📱 Instagram Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📱 Instagram Post": {
+      "main": [
+        [
+          {
+            "node": "💾 Save Post Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Save Post Data": {
+      "main": [
+        [
+          {
+            "node": "📤 Notify Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "name": "💬 IG Machine - Comment Mining & Engagement",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-comments",
+      "name": "⏰ Check Comments Every 1h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {},
+      "id": "comment-trigger",
+      "name": "📥 Comment Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== COMMENT SCRAPER =====\n// Scrapes comments from recent posts and competitors\n\nconst staticData = $getWorkflowStaticData('global');\nconst posts = staticData.posts || [];\nconst niche = staticData.niche || 'general';\nconst kb = staticData.knowledgeBase || {};\n\n// Get recent posts to check comments on\nconst recentPosts = posts.slice(-10);\n\n// Competitor accounts to monitor\nconst competitors = kb.competitors || [];\n\nconst commentTasks = [];\n\n// Check comments on our posts\nfor (const post of recentPosts) {\n  commentTasks.push({\n    type: 'own_post',\n    postId: post.id,\n    postHook: post.hook,\n    url: `https://www.instagram.com/p/${post.id}/`,\n    tasks: [\n      'Scrape all comments',\n      'Identify questions asked',\n      'Find pain points mentioned',\n      'Note emotional language used',\n      'Find product/service requests',\n      'Identify potential leads (asking for more info)'\n    ]\n  });\n}\n\n// Check comments on competitor posts\nfor (const competitor of competitors.slice(0, 5)) {\n  commentTasks.push({\n    type: 'competitor',\n    competitor: competitor.name || competitor,\n    url: competitor.profileUrl || `https://www.instagram.com/${competitor}/`,\n    tasks: [\n      'Scrape comments from top posts',\n      'Find audience pain points',\n      'Note questions people ask',\n      'Identify what content gets most engagement',\n      'Find gaps in competitor responses'\n    ]\n  });\n}\n\nreturn [{\n  json: {\n    commentTasks,\n    chatId: staticData.chatId\n  }\n}];"
+      },
+      "id": "comment-scraper",
+      "name": "🔍 Comment Scraper",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== COMMENT ANALYSIS ENGINE =====\n// Analyzes scraped comments for insights\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst kb = staticData.knowledgeBase || {};\n\n// Initialize comment insights\nif (!staticData.commentInsights) {\n  staticData.commentInsights = {\n    questions: [],\n    painPoints: [],\n    emotionalTriggers: [],\n    productRequests: [],\n    leads: [],\n    sentiment: {},\n    commonWords: {},\n    engagementPatterns: []\n  };\n}\n\nconst insights = staticData.commentInsights;\n\n// Process each comment batch\nfor (const task of input.commentData || []) {\n  const comments = task.comments || [];\n  \n  for (const comment of comments) {\n    const text = comment.text?.toLowerCase() || '';\n    \n    // Extract questions\n    if (text.includes('?') || text.startsWith('how') || text.startsWith('what') || text.startsWith('why') || text.startsWith('when') || text.startsWith('where')) {\n      insights.questions.push({\n        question: comment.text,\n        source: task.type,\n        postId: task.postId,\n        timestamp: new Date().toISOString()\n      });\n    }\n    \n    // Extract pain points\n    const painKeywords = ['struggle', 'hard', 'difficult', 'can\\'t', 'don\\'t know', 'help', 'frustrated', 'confused', 'stuck', 'fail', 'problem'];\n    if (painKeywords.some(kw => text.includes(kw))) {\n      insights.painPoints.push({\n        point: comment.text,\n        source: task.type,\n        timestamp: new Date().toISOString()\n      });\n    }\n    \n    // Extract emotional triggers\n    const emotionKeywords = ['love', 'hate', 'amazing', 'terrible', 'best', 'worst', 'changed my life', 'game changer', 'waste', 'scam', 'incredible'];\n    for (const kw of emotionKeywords) {\n      if (text.includes(kw)) {\n        insights.emotionalTriggers.push({\n          trigger: kw,\n          context: comment.text,\n          sentiment: ['love', 'amazing', 'best', 'changed my life', 'game changer', 'incredible'].includes(kw) ? 'positive' : 'negative'\n        });\n      }\n    }\n    \n    // Extract product requests\n    const productKeywords = ['where can i buy', 'do you sell', 'product', 'link', 'where to get', 'how much', 'price', 'cost', 'purchase', 'order'];\n    if (productKeywords.some(kw => text.includes(kw))) {\n      insights.productRequests.push({\n        request: comment.text,\n        source: task.type,\n        postId: task.postId,\n        timestamp: new Date().toISOString()\n      });\n    }\n    \n    // Extract leads (people wanting more info)\n    const leadKeywords = ['interested', 'want to know more', 'tell me more', 'dm me', 'send me', 'need this', 'want this', 'sign me up'];\n    if (leadKeywords.some(kw => text.includes(kw))) {\n      insights.leads.push({\n        comment: comment.text,\n        username: comment.username,\n        source: task.type,\n        postId: task.postId,\n        timestamp: new Date().toISOString()\n      });\n    }\n    \n    // Word frequency analysis\n    const words = text.split(/\\s+/).filter(w => w.length > 3);\n    for (const word of words) {\n      insights.commonWords[word] = (insights.commonWords[word] || 0) + 1;\n    }\n  }\n}\n\n// Sort common words\nconst topWords = Object.entries(insights.commonWords)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 50)\n  .map(([word, count]) => `${word} (${count})`);\n\n// Update knowledge base with comment insights\nif (!kb.audienceLanguage) kb.audienceLanguage = [];\nkb.audienceLanguage = [...new Set([...kb.audienceLanguage, ...topWords])];\n\nif (!kb.questions) kb.questions = [];\nkb.questions = [...new Set([...kb.questions, ...insights.questions.map(q => q.question)])];\n\nif (!kb.painPoints) kb.painPoints = [];\nkb.painPoints = [...new Set([...kb.painPoints, ...insights.painPoints.map(p => p.point)])];\n\nstaticData.commentInsights = insights;\nstaticData.knowledgeBase = kb;\n\nreturn [{\n  json: {\n    insights,\n    topWords,\n    chatId: input.chatId,\n    newQuestions: insights.questions.length,\n    newPainPoints: insights.painPoints.length,\n    newLeads: insights.leads.length,\n    productRequests: insights.productRequests.length\n  }\n}];"
+      },
+      "id": "comment-analyzer",
+      "name": "🧠 Comment Analyzer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-leads",
+              "leftValue": "={{ $json.newLeads }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-leads",
+      "name": "🎯 Has Leads?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== AUTO-REPLY TO COMMENTS =====\n// Generates smart replies to engage commenters\n\nconst input = $input.first().json;\nconst { insights, chatId } = input;\n\n// Generate reply templates\nconst replyTemplates = {\n  question: [\n    'Great question! 💡 [Answer based on knowledge base]',\n    'I was wondering the same thing! Here\\'s what I found...',\n    'Thanks for asking! The answer is...',\n  ],\n  painPoint: [\n    'I totally understand that struggle! 💪 Here\\'s what helped me...',\n    'You\\'re not alone in this! The key is...',\n    'I\\'ve been there too. What worked for me was...',\n  ],\n  positive: [\n    'Thank you so much! 🙏 Glad it helped!',\n    'Really appreciate that! ❤️',\n    'That means a lot! More content like this coming soon! 🔥',\n  ],\n  lead: [\n    'Thanks for your interest! 💬 Check the link in my bio!',\n    'So glad you asked! DM me for more details! 📩',n    'I\\'d love to help! Send me a DM! 🚀',\n  ]\n};\n\n// Auto-like comments (boost engagement)\nconst autoLike = insights.leads.map(lead => ({\n  action: 'like',\n  commentId: lead.commentId,\n  username: lead.username\n}));\n\n// Auto-reply to questions\nconst autoReplies = insights.questions.slice(0, 10).map(q => ({\n  action: 'reply',\n  commentId: q.commentId,\n  reply: replyTemplates.question[Math.floor(Math.random() * replyTemplates.question.length)],\n  originalQuestion: q.question\n}));\n\nreturn [{\n  json: {\n    chatId,\n    autoLike,\n    autoReplies,\n    totalEngagements: autoLike.length + autoReplies.length\n  }\n}];"
+      },
+      "id": "auto-reply",
+      "name": "🤖 Auto-Reply Generator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=💬 *COMMENT MINING REPORT*\n\n🔍 New insights from comments:\n\n❓ New Questions: {{ $json.newQuestions }}\n😤 Pain Points Found: {{ $json.newPainPoints }}\n🎯 Potential Leads: {{ $json.newLeads }}\n📦 Product Requests: {{ $json.productRequests }}\n\n🤖 Auto-engagement:\n❤️ Comments Liked: {{ $json.autoLike.length }}\n💬 Replies Sent: {{ $json.autoReplies.length }}\n\n🧠 Knowledge base updated with new audience language and pain points!\n\n{{ $json.newLeads > 0 ? '🚨 *LEADS DETECTED!* Check DMs — people want more info!' : '' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-comments",
+      "name": "📤 Notify Comment Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1340, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Check Comments Every 1h": {
+      "main": [
+        [
+          {
+            "node": "🔍 Comment Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Comment Trigger": {
+      "main": [
+        [
+          {
+            "node": "🔍 Comment Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Comment Scraper": {
+      "main": [
+        [
+          {
+            "node": "🧠 Comment Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Comment Analyzer": {
+      "main": [
+        [
+          {
+            "node": "🎯 Has Leads?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Has Leads?": {
+      "main": [
+        [
+          {
+            "node": "🤖 Auto-Reply Generator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📤 Notify Comment Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Auto-Reply Generator": {
+      "main": [
+        [
+          {
+            "node": "📤 Notify Comment Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "name": "♻️ IG Machine - Content Recycling Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "schedule-recycle",
+      "name": "⏰ Check for Recycling Every 12h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {},
+      "id": "recycle-trigger",
+      "name": "📥 Recycle Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== CONTENT RECYCLING DETECTOR =====\n// Finds viral content that can be repurposed\n\nconst staticData = $getWorkflowStaticData('global');\nconst posts = staticData.posts || [];\nconst kb = staticData.knowledgeBase || {};\n\n// Find posts worth recycling (high engagement)\nconst recyclablePosts = posts.filter(post => {\n  const views = post.views || 0;\n  const likes = post.likes || 0;\n  const saves = post.saves || 0;\n  const comments = post.comments || 0;\n  \n  // Viral threshold\n  if (views > 10000) return true;\n  // High engagement rate\n  if (views > 0 && ((likes + saves + comments) / views) > 0.05) return true;\n  // High saves (valuable content)\n  if (saves > 100) return true;\n  \n  return false;\n}).sort((a, b) => (b.views || 0) - (a.views || 0));\n\n// Generate recycling ideas for each post\nconst recyclingPlans = recyclablePosts.slice(0, 5).map(post => {\n  const formats = [\n    {\n      format: 'reel_script',\n      title: '🎬 Reel Version',\n      description: 'Turn this carousel into a talking-head or text-overlay reel',\n      hook: post.hook,\n      script: `[HOOK] ${post.hook}\\n\\n[CONTENT] Walk through the key points from the carousel\\n\\n[CTA] Follow for more!`,\n      estimatedReach: 'Higher (reels get more reach)',\n      effort: 'Medium'\n    },\n    {\n      format: 'story_sequence',\n      title: '📱 Story Version',\n      description: 'Break into 5-7 story slides with polls/questions',\n      slides: [\n        `Story 1: \"${post.hook}\" (text overlay)`,\n        'Story 2: Key point 1 + Poll sticker',\n        'Story 3: Key point 2 + Question sticker',\n        'Story 4: Key point 3 + Emoji slider',\n        'Story 5: Key point 4 + Quiz sticker',\n        'Story 6: Main takeaway',\n        'Story 7: CTA + Link sticker'\n      ],\n      estimatedReach: 'Medium (story views)',\n      effort: 'Low'\n    },\n    {\n      format: 'quote_card',\n      title: '💬 Quote Card',\n      description: 'Extract the most impactful line as a standalone quote',\n      quote: post.hook,\n      design: 'Bold typography, brand colors, simple background',\n      estimatedReach: 'Medium (shareable)',\n      effort: 'Very Low'\n    },\n    {\n      format: 'infographic',\n      title: '📊 Infographic',\n      description: 'Turn data points into a visual infographic',\n      sections: ['Problem stats', 'Solution breakdown', 'Results data'],\n      estimatedReach: 'High (saveable)',\n      effort: 'Medium'\n    },\n    {\n      format: 'thread',\n      title: '🧵 Thread Version',\n      description: 'Expand each slide into a detailed thread post',\n      structure: 'Intro hook → Point 1-5 → Summary → CTA',\n      estimatedReach: 'Medium-High',\n      effort: 'Low'\n    },\n    {\n      format: 'meme',\n      title: '😂 Meme Version',\n      description: 'Turn the core message into a relatable meme',\n      template: 'Use trending meme format',\n      estimatedReach: 'Very High (viral potential)',\n      effort: 'Low'\n    }\n  ];\n  \n  return {\n    originalPost: {\n      id: post.id,\n      hook: post.hook,\n      views: post.views,\n      engagement: (post.likes || 0) + (post.saves || 0) + (post.comments || 0)\n    },\n    recyclingFormats: formats,\n    priority: post.views > 50000 ? 'HIGH' : post.views > 10000 ? 'MEDIUM' : 'LOW'\n  };\n});\n\nreturn [{\n  json: {\n    recyclablePosts: recyclablePosts.length,\n    recyclingPlans,\n    chatId: staticData.chatId\n  }\n}];"
+      },
+      "id": "recycle-detector",
+      "name": "🔍 Recycle Detector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SCHEDULE RECYCLED CONTENT =====\n// Picks the best recycling format and schedules it\n\nconst input = $input.first().json;\nconst { recyclingPlans, chatId } = input;\nconst staticData = $getWorkflowStaticData('global');\n\n// Pick the best recycling opportunity\nconst bestPlan = recyclingPlans[0];\nif (!bestPlan) {\n  return [{ json: { noRecycling: true, chatId } }];\n}\n\n// Pick the format with highest estimated reach\nconst formatPriority = ['meme', 'reel_script', 'infographic', 'thread', 'story_sequence', 'quote_card'];\nconst bestFormat = bestPlan.recyclingFormats.find(f => formatPriority.includes(f.format)) || bestPlan.recyclingFormats[0];\n\n// Schedule the recycled content\nconst recycledContent = {\n  originalId: bestPlan.originalPost.id,\n  originalHook: bestPlan.originalPost.hook,\n  newFormat: bestFormat.format,\n  newTitle: bestFormat.title,\n  content: bestFormat,\n  scheduledTime: getNextPostTime(),\n  status: 'scheduled'\n};\n\n// Store in recycling history\nif (!staticData.recyclingHistory) staticData.recyclingHistory = [];\nstaticData.recyclingHistory.push({\n  timestamp: new Date().toISOString(),\n  ...recycledContent\n});\n\nfunction getNextPostTime() {\n  // Schedule for next optimal posting time\n  const now = new Date();\n  const optimalHours = [9, 12, 17, 20]; // 9am, 12pm, 5pm, 8pm\n  const currentHour = now.getHours();\n  \n  for (const hour of optimalHours) {\n    if (hour > currentHour) {\n      const scheduled = new Date(now);\n      scheduled.setHours(hour, 0, 0, 0);\n      return scheduled.toISOString();\n    }\n  }\n  \n  // Schedule for tomorrow 9am\n  const tomorrow = new Date(now);\n  tomorrow.setDate(tomorrow.getDate() + 1);\n  tomorrow.setHours(9, 0, 0, 0);\n  return tomorrow.toISOString();\n}\n\nreturn [{\n  json: {\n    recycledContent,\n    totalRecyclable: recyclingPlans.length,\n    chatId\n  }\n}];"
+      },
+      "id": "schedule-recycled",
+      "name": "📅 Schedule Recycled",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=♻️ *CONTENT RECYCLING ALERT!*\n\n🔄 Found {{ $json.totalRecyclable }} posts worth recycling!\n\n📋 *Best Candidate:*\n📌 Original: \"{{ $json.recycledContent.originalHook }}\"\n🔄 New Format: {{ $json.recycledContent.newTitle }}\n⏰ Scheduled: {{ $json.recycledContent.scheduledTime }}\n\n💡 *Why recycle?*\n• Viral content can go viral AGAIN in different formats\n• Different formats reach different audience segments\n• Saves you time while maximizing content ROI\n\n{{ $json.totalRecyclable > 1 ? '📌 More recyclable content available! Type /recycle to see all options.' : '' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-recycle",
+      "name": "📤 Notify Recycling",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [900, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Check for Recycling Every 12h": {
+      "main": [
+        [
+          {
+            "node": "🔍 Recycle Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Recycle Trigger": {
+      "main": [
+        [
+          {
+            "node": "🔍 Recycle Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Recycle Detector": {
+      "main": [
+        [
+          {
+            "node": "📅 Schedule Recycled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📅 Schedule Recycled": {
+      "main": [
+        [
+          {
+            "node": "📤 Notify Recycling",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

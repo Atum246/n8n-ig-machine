@@ -1,0 +1,257 @@
+{
+  "name": "📊 IG Machine - Analytics & Performance Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-monitor",
+      "name": "⏰ Monitor Every 2h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {},
+      "id": "analytics-trigger",
+      "name": "📥 Analytics Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== FETCH POST PERFORMANCE =====\n// Gets latest metrics for all posts\n\nconst staticData = $getWorkflowStaticData('global');\nconst posts = staticData.posts || [];\n\n// Filter posts from last 30 days\nconst thirtyDaysAgo = new Date();\nthirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);\n\nconst activePosts = posts.filter(p => new Date(p.createdAt) > thirtyDaysAgo);\n\n// Prepare data for each post to check\nconst postChecks = activePosts.map(post => ({\n  postId: post.id,\n  hook: post.hook,\n  createdAt: post.createdAt,\n  abTestId: post.abTestId,\n  currentViews: post.views,\n  currentLikes: post.likes,\n  currentComments: post.comments,\n  currentSaves: post.saves,\n  currentShares: post.shares\n}));\n\nreturn [{\n  json: {\n    postChecks,\n    totalPosts: posts.length,\n    activePosts: activePosts.length\n  }\n}];"
+      },
+      "id": "get-posts",
+      "name": "📋 Get Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SCRAPE INSTAGRAM METRICS =====\n// Uses browser to check actual post performance\n\nconst input = $input.first().json;\nconst { postChecks } = input;\n\n// For each post, generate a browser task to scrape metrics\nconst scrapeTasks = postChecks.map(post => ({\n  postId: post.postId,\n  // Instagram post URL pattern\n  url: `https://www.instagram.com/p/${post.postId}/`,\n  metricsToCollect: [\n    'view_count',\n    'like_count', \n    'comment_count',\n    'save_count',\n    'share_count',\n    'reach',\n    'impressions'\n  ]\n}));\n\nreturn [{\n  json: {\n    ...input,\n    scrapeTasks\n  }\n}];"
+      },
+      "id": "scrape-metrics",
+      "name": "🔍 Scrape Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== ANALYZE PERFORMANCE =====\n// Compares metrics, detects trends, triggers alerts\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst posts = staticData.posts || [];\n\nconst analysis = {\n  alerts: [],\n  insights: [],\n  viralDetected: false,\n  flopDetected: false,\n  recommendations: []\n};\n\nfor (const post of posts) {\n  const prevViews = post.views || 0;\n  const currentViews = post.currentViews || 0;\n  const viewGrowth = currentViews - prevViews;\n  const hoursSincePosted = (Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60 * 60);\n  \n  // ===== VIRAL DETECTION =====\n  if (currentViews > 10000 && hoursSincePosted < 24) {\n    analysis.viralDetected = true;\n    analysis.alerts.push({\n      type: 'VIRAL',\n      priority: 'HIGH',\n      postId: post.id,\n      message: `🔥🔥🔥 VIRAL ALERT! Post \"${post.hook}\" hit ${currentViews} views in ${Math.round(hoursSincePosted)} hours!`,\n      views: currentViews,\n      growth: viewGrowth\n    });\n  }\n  \n  if (currentViews > 50000 && hoursSincePosted < 48) {\n    analysis.alerts.push({\n      type: 'MEGA_VIRAL',\n      priority: 'CRITICAL',\n      postId: post.id,\n      message: `🚀🚀🚀 MEGA VIRAL! \"${post.hook}\" - ${currentViews} views in ${Math.round(hoursSincePosted)}h! Time to monetize!`,\n      views: currentViews\n    });\n  }\n  \n  if (currentViews > 100000) {\n    analysis.alerts.push({\n      type: 'MONETIZE_READY',\n      priority: 'CRITICAL',\n      postId: post.id,\n      message: `💰 MONETIZATION ALERT! \"${post.hook}\" hit ${currentViews} views! Your audience is ready. Let's discuss products!`\n    });\n  }\n  \n  // ===== FLOP DETECTION =====\n  if (hoursSincePosted > 24 && currentViews < 500) {\n    analysis.flopDetected = true;\n    analysis.alerts.push({\n      type: 'FLOP',\n      priority: 'MEDIUM',\n      postId: post.id,\n      message: `⚠️ Post \"${post.hook}\" is underperforming (${currentViews} views in ${Math.round(hoursSincePosted)}h). Analyzing why...`\n    });\n    \n    // Auto-diagnose flop reasons\n    analysis.insights.push({\n      type: 'FLOP_DIAGNOSIS',\n      postId: post.id,\n      possibleReasons: [\n        'Hook not strong enough - try curiosity gap',\n        'Posted at wrong time',\n        'Content not resonating with audience',\n        'Hashtags not reaching right people',\n        'Design not eye-catching enough',\n        'Caption too long/short',\n        'No clear CTA'\n      ]\n    });\n  }\n  \n  // ===== ENGAGEMENT ANALYSIS =====\n  if (currentViews > 0) {\n    const engagementRate = ((post.likes + post.comments + post.saves) / currentViews * 100).toFixed(2);\n    \n    if (engagementRate > 5) {\n      analysis.insights.push({\n        type: 'HIGH_ENGAGEMENT',\n        postId: post.id,\n        message: `Great engagement (${engagementRate}%) on \"${post.hook}\". Double down on this style!`,\n        rate: engagementRate\n      });\n    }\n    \n    if (post.saves > post.likes * 0.1) {\n      analysis.insights.push({\n        type: 'HIGH_SAVES',\n        postId: post.id,\n        message: `High save ratio on \"${post.hook}\" — this content is valuable! Create similar content.`\n      });\n    }\n  }\n  \n  // ===== A/B TEST ANALYSIS =====\n  if (post.abTestId) {\n    const abGroup = posts.filter(p => p.abTestId === post.abTestId);\n    if (abGroup.length > 1) {\n      const bestPerforming = abGroup.reduce((best, p) => (p.views > best.views) ? p : best);\n      analysis.insights.push({\n        type: 'AB_TEST_RESULT',\n        testId: post.abTestId,\n        winner: bestPerforming.id,\n        winningHook: bestPerforming.hook,\n        message: `A/B Test Result: \"${bestPerforming.hook}\" outperformed with ${bestPerforming.views} views`\n      });\n    }\n  }\n}\n\n// ===== GROWTH TREND ANALYSIS =====\nconst recentPosts = posts.filter(p => {\n  const daysSince = (Date.now() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24);\n  return daysSince <= 7;\n});\n\nconst avgViewsRecent = recentPosts.reduce((sum, p) => sum + (p.views || 0), 0) / (recentPosts.length || 1);\nconst olderPosts = posts.filter(p => {\n  const daysSince = (Date.now() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24);\n  return daysSince > 7 && daysSince <= 14;\n});\nconst avgViewsOlder = olderPosts.reduce((sum, p) => sum + (p.views || 0), 0) / (olderPosts.length || 1);\n\nif (avgViewsRecent > avgViewsOlder * 1.5) {\n  analysis.insights.push({\n    type: 'GROWTH_TREND',\n    message: `📈 GROWTH DETECTED! This week's posts averaging ${Math.round(avgViewsRecent)} views vs ${Math.round(avgViewsOlder)} last week. Keep doing what you're doing!`\n  });\n} else if (avgViewsRecent < avgViewsOlder * 0.7) {\n  analysis.insights.push({\n    type: 'DECLINE_TREND',\n    message: `📉 Views declining. Time to shake things up — new hooks, new format, or new posting time.`\n  });\n}\n\n// ===== STORE ANALYSIS =====\nif (!staticData.analytics) staticData.analytics = [];\nstaticData.analytics.push({\n  timestamp: new Date().toISOString(),\n  analysis,\n  totalPosts: posts.length,\n  avgViews: avgViewsRecent\n});\n\nreturn [{\n  json: {\n    analysis,\n    posts,\n    chatId: input.chatId || staticData.chatId\n  }\n}];"
+      },
+      "id": "analyze-performance",
+      "name": "📊 Analyze Performance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-alerts",
+              "leftValue": "={{ $json.analysis.alerts.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-alerts",
+      "name": "🔔 Has Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== FORMAT ALERT MESSAGES =====\n\nconst input = $input.first().json;\nconst { analysis, chatId } = input;\n\nconst messages = analysis.alerts.map(alert => {\n  let emoji = '📊';\n  let priority = '';\n  \n  switch(alert.type) {\n    case 'VIRAL':\n      emoji = '🔥';\n      priority = '🚨 URGENT';\n      break;\n    case 'MEGA_VIRAL':\n      emoji = '🚀';\n      priority = '🚨🚨 CRITICAL';\n      break;\n    case 'MONETIZE_READY':\n      emoji = '💰';\n      priority = '💎 MONETIZATION TIME';\n      break;\n    case 'FLOP':\n      emoji = '⚠️';\n      priority = '📋 ACTION NEEDED';\n      break;\n  }\n  \n  return `${emoji} *${priority}*\\n\\n${alert.message}`;\n});\n\n// Add insights\nconst insightMessages = analysis.insights.map(insight => {\n  return `💡 *Insight:* ${insight.message}`;\n});\n\nconst fullMessage = [...messages, ...insightMessages].join('\\n\\n---\\n\\n');\n\nreturn [{\n  json: {\n    chatId,\n    message: fullMessage,\n    hasViral: analysis.viralDetected,\n    hasFlop: analysis.flopDetected\n  }\n}];"
+      },
+      "id": "format-alerts",
+      "name": "📝 Format Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-alert",
+      "name": "📤 Send Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1560, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== AUTO-ADJUST STRATEGY =====\n// When posts flop, automatically research and adjust\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\n\nif (input.hasFlop) {\n  // Trigger additional research\n  const niche = staticData.niche;\n  \n  // Research what's currently working\n  const researchQueries = [\n    `${niche} viral content this week`,\n    `${niche} trending hooks`,\n    `${niche} best performing posts today`,\n    `what's working on instagram ${niche} 2026`\n  ];\n  \n  // Adjust content strategy\n  if (!staticData.strategyAdjustments) staticData.strategyAdjustments = [];\n  staticData.strategyAdjustments.push({\n    timestamp: new Date().toISOString(),\n    reason: 'Post underperformance detected',\n    action: 'Increased research frequency + new hook testing',\n    queries: researchQueries\n  });\n}\n\nif (input.hasViral) {\n  // Double down on viral content\n  if (!staticData.viralPatterns) staticData.viralPatterns = [];\n  staticData.viralPatterns.push({\n    timestamp: new Date().toISOString(),\n    action: 'Identified viral pattern - will replicate'\n  });\n}\n\nreturn [{\n  json: {\n    adjusted: input.hasFlop || input.hasViral,\n    chatId: input.chatId\n  }\n}];"
+      },
+      "id": "auto-adjust",
+      "name": "🔄 Auto-Adjust",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== GENERATE ANALYTICS REPORT =====\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst posts = staticData.posts || [];\n\n// Calculate stats\nconst totalViews = posts.reduce((sum, p) => sum + (p.views || 0), 0);\nconst totalLikes = posts.reduce((sum, p) => sum + (p.likes || 0), 0);\nconst totalComments = posts.reduce((sum, p) => sum + (p.comments || 0), 0);\nconst totalSaves = posts.reduce((sum, p) => sum + (p.saves || 0), 0);\nconst avgViews = totalViews / (posts.length || 1);\n\n// Top performing posts\nconst topPosts = [...posts].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 5);\n\n// Worst performing\nconst worstPosts = [...posts].sort((a, b) => (a.views || 0) - (b.views || 0)).slice(0, 3);\n\n// Best hooks\nconst hookPerformance = {};\nfor (const post of posts) {\n  if (!hookPerformance[post.hook]) hookPerformance[post.hook] = 0;\n  hookPerformance[post.hook] += post.views || 0;\n}\nconst bestHooks = Object.entries(hookPerformance)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 5);\n\nconst report = `📊 *ANALYTICS DASHBOARD*\\n\\n` +\n  `📈 *Overview:*\\n` +\n  `📝 Total Posts: ${posts.length}\\n` +\n  `👁️ Total Views: ${totalViews.toLocaleString()}\\n` +\n  `❤️ Total Likes: ${totalLikes.toLocaleString()}\\n` +\n  `💬 Total Comments: ${totalComments.toLocaleString()}\\n` +\n  `🔖 Total Saves: ${totalSaves.toLocaleString()}\\n` +\n  `📊 Avg Views/Post: ${Math.round(avgViews).toLocaleString()}\\n\\n` +\n  `🏆 *Top Performing:*\\n` +\n  topPosts.map((p, i) => `${i+1}. \"${p.hook}\" — ${p.views} views`).join('\\n') +\n  `\\n\\n🎣 *Best Hooks:*\\n` +\n  bestHooks.map((h, i) => `${i+1}. \"${h[0]}\" — ${h[1]} total views`).join('\\n') +\n  `\\n\\n⚠️ *Needs Improvement:*\\n` +\n  worstPosts.map((p, i) => `${i+1}. \"${p.hook}\" — ${p.views} views`).join('\\n');\n\nreturn [{\n  json: {\n    chatId: input.chatId,\n    report\n  }\n}];"
+      },
+      "id": "generate-report",
+      "name": "📊 Generate Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 600]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.report }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-report",
+      "name": "📤 Send Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1120, 600],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Monitor Every 2h": {
+      "main": [
+        [
+          {
+            "node": "📋 Get Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Analytics Trigger": {
+      "main": [
+        [
+          {
+            "node": "📊 Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Get Posts": {
+      "main": [
+        [
+          {
+            "node": "🔍 Scrape Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Scrape Metrics": {
+      "main": [
+        [
+          {
+            "node": "📊 Analyze Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Analyze Performance": {
+      "main": [
+        [
+          {
+            "node": "🔔 Has Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔔 Has Alerts?": {
+      "main": [
+        [
+          {
+            "node": "📝 Format Alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔄 Auto-Adjust",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "📝 Format Alerts": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Generate Report": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

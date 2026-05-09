@@ -1,0 +1,422 @@
+{
+  "name": "🧠 IG Machine - Master Control (Telegram Chat)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== MASTER COMMAND ROUTER =====\n// Parses user messages and routes to appropriate actions\n\nconst msg = $input.first().json.message;\nconst text = (msg.text || '').toLowerCase().trim();\nconst chatId = msg.chat.id;\nconst userId = msg.from.id;\n\n// Load state from workflow static data\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.state) {\n  staticData.state = {\n    niche: null,\n    brandIdentity: null,\n    sampleCarousels: [],\n    knowledgeBase: {},\n    posts: [],\n    phase: 'idle',\n    igCredentials: null,\n    competitors: [],\n    audiencePersonas: [],\n    hookFormulas: [],\n    contentDNA: null,\n    monetizationReady: false,\n    lastResearchTime: null,\n    postHistory: [],\n    abTests: []\n  };\n}\n\nconst state = staticData.state;\nlet response = '';\nlet action = 'chat';\nlet actionData = {};\n\n// ===== COMMAND PARSING =====\n\n// Set Niche\nif (text.startsWith('/niche ') || text.startsWith('set niche ') || text.startsWith('my niche is ')) {\n  const niche = text.replace(/^(\\/niche |set niche |my niche is )/, '').trim();\n  state.niche = niche;\n  state.phase = 'researching';\n  action = 'start_research';\n  actionData = { niche };\n  response = `🔥 Niche locked: *${niche}*\\n\\n⚡ Starting deep research engine NOW. I'll scour TikTok, Instagram, Reddit, YouTube, Pinterest, LinkedIn, Twitter, Facebook groups, Google Trends, articles, and hundreds more sources.\\n\\nThis might take a bit — I'm going DEEP. I'll ping you when I've built the knowledge base. 🧠`;\n}\n\n// Set Brand Identity\nelse if (text.startsWith('/brand ') || text.startsWith('my brand ') || text.startsWith('set brand ')) {\n  const brand = text.replace(/^(\\/brand |my brand |set brand )/, '').trim();\n  state.brandIdentity = brand;\n  response = `🎨 Brand identity locked: *${brand}*\\n\\nNow upload your sample carousel images so I can match the style! 📸`;\n}\n\n// Upload Sample Carousel (when user sends images)\nelse if (msg.photo && state.phase !== 'idle') {\n  const photoId = msg.photo[msg.photo.length - 1].file_id;\n  state.sampleCarousels.push(photoId);\n  response = `📸 Got carousel sample #${state.sampleCarousels.length}! ${state.sampleCarousels.length >= 3 ? 'Enough samples — I can now match your style! ✅' : 'Send more if you have them!'}`;\n}\n\n// Set IG Credentials\nelse if (text.startsWith('/ig ') || text.startsWith('set ig ') || text.startsWith('instagram ')) {\n  const creds = text.replace(/^(\\/ig |set ig |instagram )/, '').trim();\n  const parts = creds.split(' ');\n  if (parts.length >= 2) {\n    state.igCredentials = { username: parts[0], password: parts.slice(1).join(' ') };\n    response = `✅ IG credentials saved for @${parts[0]}\\n\\n⚠️ These are stored securely in n8n credentials. Let's go! 🔥`;\n  } else {\n    response = `❌ Format: /ig username password`;\n  }\n}\n\n// Start Content Creation\nelse if (text.startsWith('/create') || text === 'create' || text === 'make post' || text.startsWith('make a post') || text.startsWith('create post') || text.startsWith('post something')) {\n  if (!state.niche) {\n    response = `❌ Set your niche first! Example: /niche fitness`;\n  } else if (!state.brandIdentity) {\n    response = `❌ Set your brand first! Example: /brand minimalist fitness brand with dark theme`;\n  } else {\n    action = 'create_content';\n    response = `🚀 Creating carousel based on my research...\\n\\nGive me a moment — I'm picking the best hook, angle, and design based on what's working RIGHT NOW in ${state.niche} 🔥`;\n  }\n}\n\n// Research Status\nelse if (text === '/status' || text === 'status' || text === 'how are things' || text === 'progress') {\n  const postCount = state.posts.length;\n  const lastPost = state.posts.length > 0 ? state.posts[state.posts.length - 1] : null;\n  const kbSize = Object.keys(state.knowledgeBase).length;\n  \n  response = `📊 *STATUS REPORT*\\n\\n`;\n  response += `🎯 Niche: ${state.niche || 'Not set'}\\n`;\n  response += `🎨 Brand: ${state.brandIdentity || 'Not set'}\\n`;\n  response += `📸 Carousel Samples: ${state.sampleCarousels.length}\\n`;\n  response += `🧠 Knowledge Base: ${kbSize} data points\\n`;\n  response += `📝 Posts Made: ${postCount}\\n`;\n  response += `🔬 Phase: ${state.phase}\\n`;\n  response += `💰 Monetization: ${state.monetizationReady ? 'READY 🔥' : 'Not yet'}\\n`;\n  \n  if (lastPost) {\n    response += `\\n📈 *Last Post Performance:*\\n`;\n    response += `👁️ Views: ${lastPost.views || 'Tracking...'}\\n`;\n    response += `❤️ Likes: ${lastPost.likes || 'Tracking...'}\\n`;\n    response += `💬 Comments: ${lastPost.comments || 'Tracking...'}\\n`;\n    response += `📤 Saves: ${lastPost.saves || 'Tracking...'}\\n`;\n  }\n}\n\n// Research Now\nelse if (text === '/research' || text === 'research' || text === 'research now' || text === 'update knowledge') {\n  action = 'start_research';\n  actionData = { niche: state.niche };\n  response = `🔄 Starting fresh research sweep across ALL platforms...\\n\\nI'll update the knowledge base with the latest data. 🧠⚡`;\n}\n\n// Show Knowledge\nelse if (text === '/knowledge' || text === 'knowledge' || text === 'what do you know' || text === 'show knowledge') {\n  const kb = state.knowledgeBase;\n  response = `🧠 *KNOWLEDGE BASE SUMMARY*\\n\\n`;\n  response += `📊 Top Hooks: ${(kb.topHooks || []).slice(0, 5).join(', ') || 'Still learning...'}\\n`;\n  response += `🏷️ Top Hashtags: ${(kb.topHashtags || []).slice(0, 10).join(', ') || 'Still learning...'}\\n`;\n  response += `⏰ Best Post Times: ${(kb.bestTimes || []).slice(0, 3).join(', ') || 'Still learning...'}\\n`;\n  response += `🎯 Top CTAs: ${(kb.topCTAs || []).slice(0, 5).join(', ') || 'Still learning...'}\\n`;\n  response += `👥 Audience Pain Points: ${(kb.painPoints || []).slice(0, 5).join(', ') || 'Still learning...'}\\n`;\n  response += `🔥 Trending Topics: ${(kb.trendingTopics || []).slice(0, 5).join(', ') || 'Still learning...'}\\n`;\n  response += `🏆 Competitors Tracked: ${(kb.competitors || []).length}\\n`;\n  response += `💡 Content Ideas: ${(kb.contentIdeas || []).length}\\n`;\n  response += `\\n📚 Total data points: ${Object.keys(kb).length}`;\n}\n\n// Analytics\nelse if (text === '/analytics' || text === 'analytics' || text === 'how are posts doing' || text === 'show analytics') {\n  action = 'get_analytics';\n  response = `📊 Pulling latest analytics...`;\n}\n\n// Viral Alert Check\nelse if (text === '/viral' || text === 'viral' || text === 'anything going viral' || text === 'trending') {\n  action = 'check_trends';\n  response = `🔍 Checking what's going VIRAL in ${state.niche} right now...`;\n}\n\n// Monetization Discussion\nelse if (text === '/monetize' || text === 'monetize' || text === 'time to monetize' || text === 'lets monetize') {\n  action = 'monetize';\n  response = `💰 Let's talk money! Analyzing your audience and niche for the best monetization strategy...`;\n}\n\n// Help\nelse if (text === '/help' || text === 'help' || text === 'what can you do') {\n  response = `🤖 *NEO IG MACHINE - COMMANDS*\\n\\n`;\n  response += `🎯 *Setup:*\\n`;\n  response += `/niche [name] — Set your niche\\n`;\n  response += `/brand [description] — Set brand identity\\n`;\n  response += `/ig [user] [pass] — Set IG credentials\\n`;\n  response += `📸 Upload carousel samples as images\\n\\n`;\n  response += `🚀 *Actions:*\\n`;\n  response += `create / make post — Generate & post carousel\\n`;\n  response += `research — Update knowledge base\\n`;\n  response += `status — Check progress\\n`;\n  response += `knowledge — See what I've learned\\n`;\n  response += `analytics — Post performance\\n`;\n  response += `viral / trending — Check viral content\\n`;\n  response += `monetize — Monetization strategy\\n\\n`;\n  response += `💬 *Chat:*\\n`;\n  response += `Talk to me normally! Ask me anything about ${state.niche || 'your niche'} 🧠`;\n}\n\n// Free Chat (AI Response)\nelse {\n  action = 'ai_chat';\n  actionData = { message: text, state: state };\n  response = null; // Will be generated by AI\n}\n\nreturn [{\n  json: {\n    chatId,\n    userId,\n    text,\n    response,\n    action,\n    actionData,\n    state\n  }\n}];"
+      },
+      "id": "command-router",
+      "name": "🧠 Command Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-research",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "start_research",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-research",
+      "name": "Is Research?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-create",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "create_content",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-create",
+      "name": "Is Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-analytics",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "get_analytics",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-analytics",
+      "name": "Is Analytics?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-trends",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "check_trends",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-trends",
+      "name": "Is Trends?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 800]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-monetize",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "monetize",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-monetize",
+      "name": "Is Monetize?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 1000]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-response",
+      "name": "📤 Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [900, 400],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.response }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-research-start",
+      "name": "📤 Send Research Start",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [900, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": "research-engine-workflow-id",
+        "options": {
+          "data": {
+            "niche": "={{ $json.actionData.niche }}",
+            "chatId": "={{ $json.chatId }}",
+            "state": "={{ $json.state }}"
+          }
+        }
+      },
+      "id": "trigger-research",
+      "name": "🔬 Trigger Research Engine",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": "content-creation-workflow-id",
+        "options": {
+          "data": {
+            "chatId": "={{ $json.chatId }}",
+            "state": "={{ $json.state }}"
+          }
+        }
+      },
+      "id": "trigger-create",
+      "name": "🎨 Trigger Content Creation",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "workflowId": "analytics-workflow-id",
+        "options": {
+          "data": {
+            "chatId": "={{ $json.chatId }}",
+            "state": "={{ $json.state }}"
+          }
+        }
+      },
+      "id": "trigger-analytics",
+      "name": "📊 Trigger Analytics",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 600]
+    },
+    {
+      "parameters": {
+        "workflowId": "trend-monitor-workflow-id",
+        "options": {
+          "data": {
+            "chatId": "={{ $json.chatId }}",
+            "state": "={{ $json.state }}"
+          }
+        }
+      },
+      "id": "trigger-trends",
+      "name": "🔥 Trigger Trend Monitor",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 800]
+    },
+    {
+      "parameters": {
+        "workflowId": "monetization-workflow-id",
+        "options": {
+          "data": {
+            "chatId": "={{ $json.chatId }}",
+            "state": "={{ $json.state }}"
+          }
+        }
+      },
+      "id": "trigger-monetize",
+      "name": "💰 Trigger Monetization",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1120, 1000]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "🧠 Command Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Command Router": {
+      "main": [
+        [
+          {
+            "node": "Is Research?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Create?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Analytics?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Trends?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Monetize?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Research?": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Research Start",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔬 Trigger Research Engine",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📤 Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Create?": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🎨 Trigger Content Creation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is Analytics?": {
+      "main": [
+        [
+          {
+            "node": "📊 Trigger Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is Trends?": {
+      "main": [
+        [
+          {
+            "node": "🔥 Trigger Trend Monitor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is Monetize?": {
+      "main": [
+        [
+          {
+            "node": "💰 Trigger Monetization",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ig-machine"
+    }
+  ]
+}

@@ -1,0 +1,206 @@
+{
+  "name": "🔥 IG Machine - Trend Monitor & Trend Jacking",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "id": "schedule-trends",
+      "name": "⏰ Check Trends Every 3h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {},
+      "id": "trend-trigger",
+      "name": "📥 Trend Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== TREND RESEARCH ORCHESTRATOR =====\n\nconst staticData = $getWorkflowStaticData('global');\nconst niche = staticData.niche || 'general';\n\nconst trendSources = [\n  // Google Trends\n  {\n    platform: 'google_trends',\n    url: `https://trends.google.com/trends/explore?q=${encodeURIComponent(niche)}&date=now 7-d`,\n    tasks: ['Check rising queries', 'Check related topics', 'Check interest over time']\n  },\n  // TikTok Trending\n  {\n    platform: 'tiktok',\n    url: `https://www.tiktok.com/search?q=${encodeURIComponent(niche + ' trending')}`,\n    tasks: ['Find trending sounds', 'Find trending hashtags', 'Find trending formats']\n  },\n  // Instagram Explore\n  {\n    platform: 'instagram',\n    url: `https://www.instagram.com/explore/`,\n    tasks: ['Check trending reels', 'Check trending topics', 'Note viral content styles']\n  },\n  // Twitter/X Trending\n  {\n    platform: 'twitter',\n    url: `https://twitter.com/explore`,\n    tasks: ['Check trending topics', 'Find viral tweets in niche']\n  },\n  // Reddit Hot\n  {\n    platform: 'reddit',\n    url: `https://www.reddit.com/r/${niche.replace(/\\s+/g, '')}/hot/`,\n    tasks: ['Check hot posts', 'Note engagement patterns']\n  }\n];\n\nreturn [{\n  json: {\n    niche,\n    trendSources,\n    chatId: staticData.chatId\n  }\n}];"
+      },
+      "id": "trend-researcher",
+      "name": "🔍 Trend Researcher",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== TREND ANALYSIS & ALERTS =====\n\nconst input = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize trend data\nif (!staticData.trends) {\n  staticData.trends = {\n    current: [],\n    history: [],\n    alerts: [],\n    jackingOpportunities: []\n  };\n}\n\nconst trends = staticData.trends;\n\n// Analyze collected trend data\nconst trendAnalysis = {\n  hotTopics: [],\n  risingQueries: [],\n  viralSounds: [],\n  trendingHashtags: [],\n  contentFormats: [],\n  jackingOpportunities: []\n};\n\n// Process each trend source\nfor (const source of input.trendData || []) {\n  if (source.platform === 'google_trends') {\n    if (source.risingQueries) trendAnalysis.risingQueries.push(...source.risingQueries);\n    if (source.relatedTopics) trendAnalysis.hotTopics.push(...source.relatedTopics);\n  }\n  \n  if (source.platform === 'tiktok') {\n    if (source.trendingSounds) trendAnalysis.viralSounds.push(...source.trendingSounds);\n    if (source.trendingHashtags) trendAnalysis.trendingHashtags.push(...source.trendingHashtags);\n    if (source.trendingFormats) trendAnalysis.contentFormats.push(...source.trendingFormats);\n  }\n  \n  if (source.platform === 'instagram') {\n    if (source.trendingReels) trendAnalysis.contentFormats.push(...source.trendingReels);\n    if (source.trendingTopics) trendAnalysis.hotTopics.push(...source.trendingTopics);\n  }\n  \n  if (source.platform === 'twitter') {\n    if (source.trending) trendAnalysis.hotTopics.push(...source.trending);\n  }\n}\n\n// Find trend jacking opportunities\nconst niche = input.niche;\nfor (const topic of trendAnalysis.hotTopics) {\n  // Check if trend is related to niche\n  const relevance = calculateRelevance(topic, niche);\n  if (relevance > 0.5) {\n    trendAnalysis.jackingOpportunities.push({\n      trend: topic,\n      relevance: relevance,\n      angle: `How ${topic} relates to ${niche}`,\n      urgency: relevance > 0.8 ? 'HIGH' : 'MEDIUM'\n    });\n  }\n}\n\n// Store trends\ntrends.current = trendAnalysis;\ntrends.history.push({\n  timestamp: new Date().toISOString(),\n  data: trendAnalysis\n});\n\n// Keep only last 100 history entries\nif (trends.history.length > 100) {\n  trends.history = trends.history.slice(-100);\n}\n\nfunction calculateRelevance(topic, niche) {\n  // Simple relevance calculation\n  const topicWords = topic.toLowerCase().split(' ');\n  const nicheWords = niche.toLowerCase().split(' ');\n  let matches = 0;\n  for (const word of nicheWords) {\n    if (topicWords.some(tw => tw.includes(word) || word.includes(tw))) matches++;\n  }\n  return matches / nicheWords.length;\n}\n\nreturn [{\n  json: {\n    trendAnalysis,\n    trends,\n    chatId: input.chatId,\n    hasJackingOpps: trendAnalysis.jackingOpportunities.length > 0\n  }\n}];"
+      },
+      "id": "trend-analyzer",
+      "name": "📊 Trend Analyzer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-opps",
+              "leftValue": "={{ $json.hasJackingOpps }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-jacking",
+      "name": "🏄 Has Opportunities?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== GENERATE TREND JACKING CONTENT IDEAS =====\n\nconst input = $input.first().json;\nconst { trendAnalysis, chatId } = input;\n\nconst jackingIdeas = trendAnalysis.jackingOpportunities.map(opp => {\n  return {\n    trend: opp.trend,\n    urgency: opp.urgency,\n    contentIdeas: [\n      `Carousel: \"How ${opp.trend} connects to your niche\"`,\n      `Reel: Quick take on ${opp.trend}`,\n      `Story: Your opinion on ${opp.trend}`,\n      `Carousel: \"What everyone gets wrong about ${opp.trend}\"`\n    ],\n    hook: `\"Everyone's talking about ${opp.trend}... here's what they're missing\"`,\n    hashtags: `#${opp.trend.replace(/\\s+/g, '')} #trending #viral`,\n    urgencyNote: opp.urgency === 'HIGH' ? '🚨 POST WITHIN 2 HOURS!' : '📌 Post within 24 hours'\n  };\n});\n\nreturn [{\n  json: {\n    jackingIdeas,\n    chatId\n  }\n}];"
+      },
+      "id": "jacking-ideas",
+      "name": "💡 Generate Jacking Ideas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=🏄 *TREND JACKING ALERT!*\\n\\n🔥 Found {{ $json.jackingIdeas.length }} opportunities to ride viral trends!\\n\\n{{ $json.jackingIdeas.map((idea, i) => `*${i+1}. ${idea.trend}* (${idea.urgency})\\n💡 ${idea.contentIdeas[0]}\\n🎣 Hook: ${idea.hook}\\n${idea.urgencyNote}`).join('\\n\\n') }}\\n\\nType /create to make a trend-jacking post NOW! 🚀",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-jacking",
+      "name": "📤 Alert Trend Jacking",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1340, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=📊 *Trend Update*\\n\\n🔍 Latest trend scan complete.\\n\\n🔥 Hot Topics: {{ $json.trendAnalysis.hotTopics.slice(0, 5).join(', ') }}\\n📈 Rising: {{ $json.trendAnalysis.risingQueries.slice(0, 5).join(', ') }}\\n🎵 Viral Sounds: {{ $json.trendAnalysis.viralSounds.slice(0, 3).join(', ') }}\\n\\nNo urgent jacking opportunities right now. I'll keep scanning! 👀",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-no-jacking",
+      "name": "📤 No Urgent Trends",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [1120, 500],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_BOT_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "⏰ Check Trends Every 3h": {
+      "main": [
+        [
+          {
+            "node": "🔍 Trend Researcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 Trend Trigger": {
+      "main": [
+        [
+          {
+            "node": "🔍 Trend Researcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Trend Researcher": {
+      "main": [
+        [
+          {
+            "node": "📊 Trend Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Trend Analyzer": {
+      "main": [
+        [
+          {
+            "node": "🏄 Has Opportunities?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🏄 Has Opportunities?": {
+      "main": [
+        [
+          {
+            "node": "💡 Generate Jacking Ideas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📤 No Urgent Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💡 Generate Jacking Ideas": {
+      "main": [
+        [
+          {
+            "node": "📤 Alert Trend Jacking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
