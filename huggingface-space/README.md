@@ -29,8 +29,8 @@ A fully automated, self-learning Instagram content machine built on n8n. Researc
 
 ## ⚡ Quick Start
 
-1. **Duplicate this Space** (click the menu → Duplicate)
-2. **Set environment variables** (see below)
+1. **Duplicate this Space** or create a new Docker Space and upload these files
+2. **Set environment variables** in Space Settings → Variables and secrets
 3. **Wait for deployment** (~5 minutes)
 4. **Open n8n** at your Space URL
 5. **Import workflows** from the [GitHub repo](https://github.com/Atum246/n8n-ig-machine)
@@ -38,19 +38,22 @@ A fully automated, self-learning Instagram content machine built on n8n. Researc
 
 ## 🔧 Environment Variables
 
-Set these when duplicating the Space:
+Go to Space **Settings** → **Variables and secrets** → **New secret** for each:
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `DB_POSTGRESDB_HOST` | Your Supabase host | Database host |
-| `DB_POSTGRESDB_PORT` | `6543` | Database port |
-| `DB_POSTGRESDB_USER` | Your Supabase user | Database user |
-| `DB_POSTGRESDB_PASSWORD` | Your Supabase password | Database password |
-| `N8N_ENCRYPTION_KEY` | Random string | Generate with `openssl rand -base64 32` |
-| `WEBHOOK_URL` | `https://your-space-name.hf.space/` | Your Space URL |
-| `N8N_EDITOR_BASE_URL` | `https://your-space-name.hf.space/` | Your Space URL |
+| `DB_POSTGRESDB_HOST` | Your Supabase host | From Supabase → Connect → Transaction pooler |
+| `DB_POSTGRESDB_PORT` | `6543` | Supabase transaction pooler port |
+| `DB_POSTGRESDB_USER` | Your Supabase user | From Supabase → Connect → Transaction pooler |
+| `DB_POSTGRESDB_PASSWORD` | Your Supabase password | Password you set when creating Supabase project |
+| `N8N_ENCRYPTION_KEY` | Random string | Generate: `openssl rand -base64 32` |
+| `WEBHOOK_URL` | `https://YOUR_USERNAME-SPACE_NAME.hf.space/` | Your Space URL (replace YOUR_USERNAME!) |
+| `N8N_EDITOR_BASE_URL` | `https://YOUR_USERNAME-SPACE_NAME.hf.space/` | Same as WEBHOOK_URL |
 | `GENERIC_TIMEZONE` | `Asia/Shanghai` | Your timezone |
 | `TZ` | `Asia/Shanghai` | Your timezone |
+
+> ⚠️ Replace `YOUR_USERNAME` and `SPACE_NAME` with your actual values!
+> Find your username at [huggingface.co/settings](https://huggingface.co/settings)
 
 ## 📦 Free Tech Stack
 
@@ -66,7 +69,7 @@ Set these when duplicating the Space:
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/Atum246/n8n-ig-machine)
-- [Setup Guide](https://github.com/Atum246/n8n-ig-machine/blob/main/README.md)
+- [Full Setup Guide](https://github.com/Atum246/n8n-ig-machine/blob/main/README.md)
 
 ---
 

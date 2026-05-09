@@ -77,18 +77,37 @@ You need two free accounts:
 2. Create a free account
 3. Remember your **profile name** (e.g., `dav`)
 
-### Step 2: Duplicate the n8n Space
+### Step 2: Create Your n8n Space
 
-1. Go to [huggingface.co/spaces/tomowang/n8n](https://huggingface.co/spaces/tomowang/n8n)
-2. Click the **menu dropdown** (top right corner)
-3. Select **Duplicate this Space**
-4. Fill in the environment variables (see table below)
-5. Click **Duplicate Space**
-6. Wait ~5 minutes for deployment
+You have two options:
+
+#### Option A: Duplicate an existing n8n Space (Easiest)
+1. Go to [huggingface.co/spaces](https://huggingface.co/spaces)
+2. Search for `n8n` in the Spaces search bar
+3. Find a Docker-based n8n Space (look for `sdk: docker` in the README)
+4. Click the **⋮ menu** (top right) → **Duplicate this Space**
+5. Fill in the environment variables (see table below)
+6. Click **Duplicate Space**
+7. Wait ~5 minutes for deployment
+
+#### Option B: Create from scratch (Recommended — Full control)
+1. Go to [huggingface.co/new-space](https://huggingface.co/new-space)
+2. Fill in:
+   - **Space name**: `ig-machine` (or whatever you want)
+   - **SDK**: Select **Docker**
+   - **Visibility**: Public or Private (your choice)
+3. Click **Create Space**
+4. Go to the **Files** tab
+5. Upload these two files from the `huggingface-space/` folder in this repo:
+   - `Dockerfile`
+   - `README.md`
+6. Go to **Settings** → **Variables and secrets**
+7. Add all environment variables from the table below
+8. The Space will automatically build and start!
 
 ### Step 3: Set Environment Variables
 
-When duplicating, fill in these variables:
+Go to your Space → **Settings** → **Variables and secrets** → **New secret** for each:
 
 | Variable | Where to Find It | Example |
 |----------|-------------------|---------|
@@ -97,10 +116,17 @@ When duplicating, fill in these variables:
 | `DB_POSTGRESDB_USER` | Supabase → Connect → Transaction pooler user | `postgres.abcxyz` |
 | `DB_POSTGRESDB_PASSWORD` | The password you set when creating Supabase project | `your-db-password` |
 | `N8N_ENCRYPTION_KEY` | Generate one (see below) | `aBcDeFgHiJkLmNoPqRsTuVwXyZ012345` |
-| `WEBHOOK_URL` | Your HuggingFace Space URL | `https://dav-ig-machine.hf.space/` |
-| `N8N_EDITOR_BASE_URL` | Same as WEBHOOK_URL | `https://dav-ig-machine.hf.space/` |
+| `WEBHOOK_URL` | Your HuggingFace Space URL | `https://YOUR_USERNAME-ig-machine.hf.space/` |
+| `N8N_EDITOR_BASE_URL` | Same as WEBHOOK_URL | `https://YOUR_USERNAME-ig-machine.hf.space/` |
 | `GENERIC_TIMEZONE` | Your timezone | `Asia/Shanghai` |
 | `TZ` | Same as above | `Asia/Shanghai` |
+
+> ⚠️ **IMPORTANT:** Replace `YOUR_USERNAME` with your actual HuggingFace username!
+> 
+> Example: If your HuggingFace username is `dav123`, your URLs would be:
+> - `https://dav123-ig-machine.hf.space/`
+> 
+> You can find your username at [huggingface.co/settings](https://huggingface.co/settings) → Profile → Username
 
 **Generate encryption key:** Open terminal and run:
 ```bash
@@ -111,10 +137,14 @@ Or use any random string of letters and numbers (32+ characters).
 ### Step 4: Get Your Space URL
 
 After deployment completes:
-1. Go to your Space (e.g., `https://huggingface.co/spaces/dav/ig-machine`)
-2. Your n8n URL will be: `https://dav-ig-machine.hf.space`
-3. Open this URL in your browser
-4. You'll see the n8n login page!
+1. Go to your Space page (e.g., `https://huggingface.co/spaces/YOUR_USERNAME/ig-machine`)
+2. Click the **App** tab or the link at the top
+3. Your n8n URL will be something like: `https://YOUR_USERNAME-ig-machine.hf.space`
+4. Open this URL in your browser
+5. You'll see the n8n login page!
+
+> 💡 **Tip:** If the URL doesn't work immediately, wait a few minutes — the build takes time.
+> Check the **Build logs** tab to see progress.
 
 ### Step 5: Set Up n8n
 
@@ -204,11 +234,13 @@ For full control, use the Dockerfile in `huggingface-space/Dockerfile`:
 ### 🎯 Quick Reference
 
 ```
-🤗 HuggingFace Space URL: https://YOUR_USERNAME-ig-machine.hf.space
+🤗 Your HuggingFace Space URL: https://YOUR_USERNAME-ig-machine.hf.space
 🗄️ Supabase Dashboard: https://supabase.com/dashboard
 📱 Telegram Bot: @your_bot_name
 📊 n8n Dashboard: https://YOUR_USERNAME-ig-machine.hf.space
 ```
+
+> Replace `YOUR_USERNAME` with your actual HuggingFace username!
 
 ---
 
